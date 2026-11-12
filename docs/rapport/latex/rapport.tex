@@ -1,0 +1,165 @@
+% Rapport de projet : Gestion d'une boutique en ligne
+% Compilation : ./compiler.sh (LuaLaTeX via latexmk, diagrammes convertis depuis docs/uml/*.svg)
+\documentclass[11pt,a4paper,openany]{report}
+
+% ---------- Polices et langue ----------
+\usepackage{fontspec}
+\usepackage[french]{babel}
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\usepackage{csquotes}
+\usepackage{microtype}
+
+% ---------- Mise en page ----------
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm,headheight=14pt]{geometry}
+\usepackage[table]{xcolor}
+\usepackage{graphicx}
+\usepackage{pdflscape}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xltabular}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage[most]{tcolorbox}
+\usepackage{hyperref}
+
+\graphicspath{{build/figures/}{captures/}{images/}}
+
+% ---------- Couleurs ----------
+\definecolor{primaire}{HTML}{1F3A5F}
+\definecolor{secondaire}{HTML}{3C6E9F}
+\definecolor{fondgris}{HTML}{F2F4F7}
+\definecolor{alerte}{HTML}{B3261E}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=primaire,
+  urlcolor=secondaire,
+  pdftitle={Rapport de projet : Gestion d'une boutique en ligne},
+  pdfauthor={LAHMOUZ Hamza, ELAOUAD Abdelhamid},
+  pdfsubject={Module Architecture JEE, ENSA Agadir},
+}
+
+% ---------- Titres ----------
+\titleformat{\chapter}[display]
+  {\normalfont\color{primaire}}
+  {\large\mdseries\scshape \chaptertitlename\ \thechapter}
+  {4pt}
+  {\Huge\bfseries\raggedright}
+  [\vspace{4pt}{\color{secondaire}\titlerule[1.2pt]}]
+\titlespacing*{\chapter}{0pt}{0pt}{24pt}
+\titleformat{\section}{\Large\bfseries\color{primaire}}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\large\bfseries\color{secondaire}}{\thesubsection}{0.8em}{}
+\titleformat{\paragraph}[runin]{\normalsize\bfseries\color{primaire}}{}{0pt}{}[ :]
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{1}
+
+% ---------- En-têtes et pieds de page ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\fancyhead[L]{\small\color{primaire}Gestion d'une boutique en ligne}
+\fancyhead[R]{\small\nouppercase{\leftmark}}
+\fancyfoot[L]{\small Projet Architecture JEE · ENSA Agadir}
+\fancyfoot[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyfoot[L]{\small Projet Architecture JEE · ENSA Agadir}
+  \fancyfoot[R]{\small\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% ---------- Listes, tableaux, légendes ----------
+% Les identifiants en police à chasse fixe ne se coupent pas : on laisse plus de souplesse aux lignes
+\setlength{\emergencystretch}{3em}
+\setlist{itemsep=2pt,topsep=4pt}
+\setlist[itemize]{label=\textbullet}
+\captionsetup{font=small,labelfont={bf,color=primaire}}
+\captionsetup[table]{position=top}
+\renewcommand{\arraystretch}{1.25}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% ---------- Commandes du rapport ----------
+% Identifiant de code (classe, méthode, URL, fichier)
+\newcommand{\code}[1]{\texttt{\NoAutoSpacing #1}}
+% En-tête de colonne
+\newcommand{\entete}[1]{\textbf{\color{white}#1}}
+\newcommand{\ligneentete}{\rowcolor{primaire}}
+
+% Diagramme UML : fichier (sans extension), légende, étiquette
+\newcommand{\diagramme}[3]{%
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{#1}
+    \caption{#2}\label{#3}
+  \end{figure}}
+% Diagramme placé sous le texte d'une section en paysage (environnement landscape ouvert par l'appelant).
+% Argument optionnel : hauteur maximale, réduite pour les diagrammes les plus hauts.
+\newcommand{\diagrammesuite}[4][0.74]{%
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth,height=#1\textheight,keepaspectratio]{#2}
+    \caption{#3}\label{#4}
+  \end{figure}}
+
+% Fiche d'un cas d'utilisation : acteur(s), précondition, postcondition, règles
+\newcommand{\fichecas}[4]{%
+  \par\noindent
+  \begin{tabularx}{\linewidth}{>{\columncolor{fondgris}\bfseries}P{3.2cm}L}
+    \toprule
+    Acteur(s) & #1 \\
+    Précondition & #2 \\
+    Postcondition & #3 \\
+    Règles & #4 \\
+    \bottomrule
+  \end{tabularx}\par\smallskip}
+\newcommand{\scenario}[1]{\par\medskip\noindent{\bfseries\color{secondaire}#1}\par\nopagebreak}
+
+% Élément restant à compléter : visible dans le PDF tant qu'il n'est pas traité
+\newtcolorbox{afaire}{colback=alerte!6,colframe=alerte,fonttitle=\bfseries,title=À compléter}
+
+% Capture d'écran : fichier PNG dans captures/, légende
+\newcommand{\capture}[2]{%
+  \IfFileExists{captures/#1.png}{%
+    \begin{figure}[H]
+      \centering
+      \includegraphics[width=\linewidth,height=0.4\textheight,keepaspectratio]{captures/#1.png}
+      \caption{#2}
+    \end{figure}}{%
+    \begin{afaire}#2 (fichier attendu : \code{captures/#1.png})\end{afaire}}}
+
+\addto\captionsfrench{\def\tablename{Tableau}}
+
+\begin{document}
+
+\input{sections/page-de-garde}
+
+\pagenumbering{roman}
+\tableofcontents
+\listoffigures
+\listoftables
+\cleardoublepage
+\pagenumbering{arabic}
+
+\input{sections/01-introduction}
+\input{sections/02-processus}
+\input{sections/03-uml}
+\input{sections/04-cas-utilisation}
+\input{sections/05-fonctionnalites}
+\input{sections/06-choix-techniques}
+\input{sections/07-difficultes}
+\input{sections/08-conclusion}
+\input{sections/09-annexes}
+
+\end{document}

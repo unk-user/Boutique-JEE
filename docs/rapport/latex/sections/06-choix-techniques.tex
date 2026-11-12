@@ -1,0 +1,110 @@
+\chapter{Choix techniques}
+
+\section{Architecture en couches}
+
+Chaque requête traverse les couches dans un seul sens : filtre → servlet → service → DAO → Hibernate.
+
+\begin{itemize}
+  \item \textbf{Servlets} (\code{controller}) : lecture des paramètres, appel d'un service, dépôt des attributs, puis
+        \code{forward} vers une JSP de \code{WEB-INF/views} ou redirection après un POST. Aucune règle métier ni requête HQL.
+  \item \textbf{Services} (\code{service}) : toutes les règles de gestion et les transactions. Une violation de règle lève
+        une \code{RegleMetierException} dont le message, en français, est affiché par la JSP.
+  \item \textbf{DAO} (\code{dao}) : accès aux données uniquement. \code{GenericDao<T>} fournit le CRUD commun (\code{sauvegarder},
+        \code{modifier}, \code{supprimer}, \code{trouverParId}, \code{listerTous}), les DAO spécifiques ajoutent les requêtes HQL.
+  \item \textbf{Modèle} (\code{model}) : entités JPA annotées et objets du panier.
+  \item \textbf{Utilitaires} (\code{util}) : \code{HibernateUtil}, \code{DemarrageListener} (création de la \code{SessionFactory} au
+        déploiement, fermeture à l'arrêt), \code{Parametres} (lecture des paramètres numériques : une valeur absente ou
+        mal formée ne provoque jamais d'erreur 500).
+\end{itemize}
+
+\section{Hibernate natif et session liée au thread}
+
+\begin{itemize}
+  \item \code{SessionFactory} unique créée par \code{HibernateUtil} à partir de \code{hibernate.cfg.xml}, sans couche
+        \code{EntityManager} ni framework d'injection.
+  \item \code{hibernate.current\_session\_context\_class = thread} : le service ouvre la transaction sur
+        \code{getCurrentSession()}, les DAO utilisent la même session sans la gérer. Chaque service dispose d'une
+        méthode privée \code{enTransaction} qui valide (commit) ou annule (rollback) la transaction.
+  \item Tables générées par \code{hbm2ddl.auto = update} à partir des annotations.
+  \item Associations \code{@ManyToOne} chargées immédiatement (comportement JPA par défaut), ce qui permet aux JSP
+        d'afficher la catégorie d'un produit ou le client d'une commande après la fermeture de la session.
+        \code{Commande.lignes} est chargée à la demande ; le détail d'une commande utilise une requête \code{join fetch}
+        (\code{CommandeDao.trouverAvecLignes}) pour charger lignes et produits en une seule fois.
+\end{itemize}
+
+\section{Cohérence du stock}
+
+\begin{itemize}
+  \item \textbf{Passage de commande} : chaque produit est relu avec un verrou pessimiste en écriture
+        (\code{LockMode.PESSIMISTIC\_WRITE}, soit \code{select … for update}). Deux commandes simultanées sur le même produit
+        sont traitées l'une après l'autre, ce qui empêche de vendre plus que le stock. La requête HQL ne verrouille
+        que la ligne du produit (et non celle de sa catégorie), et les produits sont verrouillés par identifiant
+        croissant afin que deux transactions prennent les verrous dans le même ordre et ne puissent pas se bloquer
+        mutuellement.
+  \item \textbf{Annulation} : la commande est verrouillée avant le changement de statut, si bien que deux annulations
+        simultanées ne réintègrent le stock qu'une fois. Les quantités sont rendues par une requête HQL
+        \code{update Produit p set p.stock = p.stock + :quantite}, calculée par la base sur la valeur actuelle du stock :
+        une vente validée entre-temps par une autre transaction n'est pas écrasée.
+  \item \textbf{Prix} : le prix est relu en base à la validation et copié dans la ligne de commande (RG10) ; le prix
+        conservé dans le panier ne sert qu'à l'affichage.
+\end{itemize}
+
+\section{Panier en session}
+
+Le panier (\code{Panier}, \code{LignePanier}) est un objet simple stocké dans la \code{HttpSession}, jamais persisté
+(cahier des charges §7). Les lignes sont indexées par identifiant de produit dans une \code{LinkedHashMap} (ordre d'ajout
+conservé). Le service recharge le produit à chaque ajout ou modification pour contrôler le stock réel.
+Conséquence assumée : le panier est perdu à la déconnexion ou à l'expiration de la session.
+
+\section{Navigation : PRG et messages flash}
+
+Après chaque POST qui modifie des données, la servlet redirige (modèle Post/Redirect/Get) : un
+rafraîchissement de la page ne renvoie pas le formulaire. Le message de confirmation ou d'erreur est déposé
+en session (\code{flashSucces}, \code{flashErreur}) puis affiché une seule fois et retiré par l'en-tête commun.
+Quand la saisie doit être corrigée (inscription, profil, validation de commande), la servlet fait un
+\code{forward} vers le formulaire avec le message et les valeurs saisies.
+
+\section{Sécurité}\label{sec:securite}
+
+\begin{itemize}
+  \item \textbf{Contrôle d'accès} par filtres (BNF02) : \code{AuthFilter} (\code{/client/*}) exige le rôle CLIENT, un visiteur
+        est redirigé vers la connexion et un administrateur vers son tableau de bord ; \code{AdminFilter} (\code{/admin/*})
+        exige le rôle ADMIN, un visiteur est redirigé vers la connexion et un client reçoit une erreur 403.
+        Les trois filtres (\code{EncodingFilter}, \code{AuthFilter}, \code{AdminFilter}) sont déclarés dans \code{web.xml} : seul
+        l'ordre des \code{<filter-mapping>} est garanti par la spécification Servlet, ce qui assure que
+        \code{EncodingFilter} s'exécute en premier.
+  \item \textbf{Mots de passe} hachés avec BCrypt (sel intégré) ; message d'échec identique que l'e-mail existe ou non.
+  \item \textbf{Injection SQL} : toutes les requêtes HQL utilisent des paramètres nommés ; la requête de recherche du
+        catalogue est construite dynamiquement, mais seules des clauses fixes sont concaténées, jamais une valeur
+        saisie.
+  \item \textbf{XSS} : toutes les données saisies par les utilisateurs sont affichées par \code{<c:out>}, qui échappe le HTML.
+  \item \textbf{Session} : nouvel identifiant de session à la connexion (contre la fixation de session), identifiant
+        transmis uniquement par cookie (\code{tracking-mode COOKIE}, jamais dans l'URL), invalidation à la déconnexion,
+        expiration après 30 minutes. La déconnexion se fait uniquement en POST.
+  \item \textbf{Contrôles côté serveur} : toutes les règles sont vérifiées dans les services, même si un formulaire
+        est contourné ; par exemple, un statut de commande forgé est refusé et une commande d'un autre client est
+        traitée comme inexistante (RG16).
+\end{itemize}
+
+\section{Présentation}
+
+\begin{itemize}
+  \item JSP uniquement en JSTL et EL, sans scriptlet (BNF06) ; en-tête et pied de page communs inclus dans chaque
+        page, fragments communs pour la pagination, le badge de statut et le résumé d'une commande.
+  \item Bootstrap 5.3 par CDN, mise en page responsive (BNF08).
+  \item Prix affichés avec \code{fmt:formatNumber} (deux décimales, format français, en DH) ; dates formatées par
+        l'entité (\code{getDateCommandeFormatee}), car \code{fmt:formatDate} ne prend pas en charge \code{LocalDateTime}.
+  \item Libellés français des statuts portés par l'énumération \code{StatutCommande}.
+\end{itemize}
+
+\section{Pages d'erreur}
+
+Une seule page \code{commun/erreur.jsp}, déclarée dans \code{web.xml} pour les codes 400, 403, 404, 405 et 500 et pour
+toute exception non interceptée. Elle affiche un message en français avec l'en-tête et le pied communs, sans
+trace technique ni version du serveur.
+
+\section{UTF-8 de bout en bout}
+
+Base et tables en \code{utf8mb4} (collation \code{utf8mb4\_unicode\_ci}, qui rend aussi la recherche insensible aux
+accents), connexion JDBC en UTF-8, \code{EncodingFilter} sur toutes les requêtes (lecture des paramètres et
+réponse), encodage des JSP fixé dans \code{web.xml}, sources compilées en UTF-8 (\code{pom.xml}).

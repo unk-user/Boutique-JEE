@@ -1,0 +1,109 @@
+\chapter{Processus de développement : modèle en Y}
+
+\section{Principe}
+
+Le projet suit le \textbf{modèle en Y} : un processus itératif, piloté par les cas d'utilisation, dans lequel la
+capture des besoins fonctionnels et la capture des besoins techniques sont menées en parallèle avant de se
+rejoindre dans la branche de conception et de réalisation (figure~\ref{fig:modele-y}).
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[
+      etape/.style={draw=primaire,fill=fondgris,rounded corners=3pt,thick,
+                    align=center,text width=6.2cm,inner sep=7pt,font=\small},
+      fleche/.style={-{Stealth[length=3mm]},thick,draw=secondaire}]
+    \node[etape] (fonc) at (-3.8,0)
+      {\textbf{Branche fonctionnelle}\\besoins, cas d'utilisation,\\classes du domaine};
+    \node[etape] (tech) at (3.8,0)
+      {\textbf{Branche technique}\\Java 17, Jakarta EE 10, Tomcat 10.1,\\Hibernate 6, MySQL 8, architecture MVC};
+    \node[etape] (conc) at (0,-2.7)
+      {\textbf{Conception préliminaire et détaillée}\\classes de conception, séquences};
+    \node[etape] (real) at (0,-5.0)
+      {\textbf{Codage, tests, déploiement (.war)}\\itérations successives,\\une branche par fonctionnalité};
+    \draw[fleche] (fonc.south) -- (conc.north west);
+    \draw[fleche] (tech.south) -- (conc.north east);
+    \draw[fleche] (conc) -- (real);
+  \end{tikzpicture}
+  \caption{Le modèle en Y appliqué au projet}\label{fig:modele-y}
+\end{figure}
+
+\section{Branche fonctionnelle}
+
+\begin{itemize}
+  \item Rédaction du cahier des charges (\code{docs/cahier-des-charges.md}) : 23 besoins fonctionnels codés BF01 à BF23
+        et priorisés (P1 indispensable, P2 important, P3 souhaitable), 16 règles de gestion RG01 à RG16,
+        12 besoins non fonctionnels BNF01 à BNF12.
+  \item Diagrammes de cas d'utilisation (Visiteur/Client et Administrateur), descriptions textuelles
+        (chapitre~\ref{chap:cas}), diagramme de classes du domaine.
+\end{itemize}
+
+\section{Branche technique}
+
+\begin{itemize}
+  \item Technologies imposées par le module : Java 17, Jakarta EE 10 (Servlet 6.0, JSP 3.1, JSTL 3.0), Tomcat 10.1,
+        Hibernate ORM 6, MySQL 8, Maven (packaging \code{war}), Bootstrap 5, jBCrypt, PlantUML.
+  \item Architecture MVC N-tiers : navigateur, Tomcat (couches web et métier), serveur MySQL.
+  \item Configuration Hibernate (\code{hibernate.cfg.xml}, génération des tables par \code{hbm2ddl.auto = update}) et
+        configuration web (\code{web.xml} : session, encodage, pages d'erreur).
+\end{itemize}
+
+\section{Branche de conception et de réalisation}
+
+\begin{itemize}
+  \item Conception : diagrammes de classes de conception (couche web, couche métier) et diagrammes de séquence.
+        Tous les diagrammes ont été versionnés avant la première ligne de code (commit \code{4fc0fac}), puis mis à jour
+        au fil des itérations quand l'implémentation a précisé la conception (commits \code{docs:} des branches
+        \code{feature/catalogue}, \code{feature/commande}, \code{feature/gestion-commandes}, \code{feature/p3} et
+        \code{feature/coherence-finale}).
+  \item Réalisation : une itération par groupe de fonctionnalités, chacune livrée sur une branche \code{feature/*},
+        vérifiée par des tests manuels (navigateur et requêtes HTTP) puis fusionnée dans \code{main} par pull request.
+\end{itemize}
+
+\section{Itérations et suivi GitHub}
+
+Le backlog est suivi dans \textbf{GitHub Issues} : un ticket par étape, avec la liste à cocher des codes BF/RG
+concernés. Chaque étape est développée sur sa propre branche et fusionnée par une pull request dont la
+description reprend les besoins couverts, les règles appliquées et les tests manuels effectués
+(tableau~\ref{tab:iterations}).
+
+\begin{table}[H]
+  \centering\small
+  \caption{Itérations (cahier des charges §8.3), tickets, branches et pull requests}\label{tab:iterations}
+  \begin{tabularx}{\linewidth}{cLcP{4.5cm}c}
+    \ligneentete
+    \entete{It.} & \entete{Étape} & \entete{Ticket} & \entete{Branche} & \entete{PR} \\
+    1 & Modélisation UML (cas d'utilisation, classes, séquences) & \#4 & \code{main} (documentation) & — \\
+    1 & Squelette : Maven, Hibernate, entités, encodage & \#5 & \code{feature/squelette} & \#1 \\
+    2 & Authentification et filtres (BF01 à BF03) & \#6 & \code{feature/authentification} & \#2 \\
+    2 & Back-office catégories, produits, stock (BF17 à BF19) & \#7 & \code{feature/admin-catalogue} & \#3 \\
+    2 & Catalogue public (BF05 à BF08) & \#8 & \code{feature/catalogue} & \#14 \\
+    3 & Panier en session (BF09 à BF12) & \#9 & \code{feature/panier} & \#15 \\
+    3 & Passage de commande (BF13, RG09 à RG12) & \#10 & \code{feature/commande} & \#16 \\
+    3 & Historique et gestion des commandes (BF14, BF15, BF20, BF21) & \#11 & \code{feature/gestion-commandes} & \#17 \\
+    4 & Utilisateurs (BF22), pages d'erreur, validation, responsive & \#12 & \code{feature/finitions} & \#18 \\
+    4 & Besoins P3 : profil (BF04), annulation client (BF16), tableau de bord (BF23) & \#12 & \code{feature/p3} & \#19 \\
+    5 & README et rapport & \#13 & \code{feature/livrables} & \#20 \\
+    5 & Cohérence finale : séquences, ordre des filtres, documentation & \#21 & \code{feature/coherence-finale} & \#22 \\
+    5 & Rapport final au format PDF (LaTeX) & \#23 & \code{feature/rapport-pdf} & \#24 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Remarques :
+\begin{itemize}
+  \item Les tickets et les pull requests partagent la même numérotation sur GitHub, d'où les numéros non
+        consécutifs des PR (\#1 à \#3, puis \#14 à \#20, puis \#22 et \#24).
+  \item Le texte « Closes \#N » en fin de description de PR ferme automatiquement le ticket à la fusion.
+  \item Les P3 ont été regroupés dans une PR séparée (\#19) pour pouvoir être isolés de l'étape 9 si nécessaire.
+\end{itemize}
+
+\section{Conventions Git}
+
+\begin{itemize}
+  \item Messages de commit en français, sous la forme \code{type: description} : \code{feat} (fonctionnalité), \code{fix}
+        (correction), \code{docs} (documentation, UML), \code{style} (présentation), \code{chore} (configuration du projet).
+        Exemples : \code{feat: passage de commande transactionnel (RG09 à RG12)},
+        \code{fix: réintégration du stock calculée par la base à l'annulation (RG14)}.
+  \item Un commit par sujet ; les références BF/RG figurent dans le message quand c'est utile.
+  \item Fusion avec un commit de fusion explicite : \code{fusion: <description> (\#N)}, puis suppression de la branche.
+\end{itemize}

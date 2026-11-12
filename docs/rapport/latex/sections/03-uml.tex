@@ -1,0 +1,128 @@
+\chapter{Modèles UML}
+
+Les sources PlantUML et leurs exports SVG sont dans \code{docs/uml/}. Le cahier des charges (§8.2) prévoyait six
+diagrammes ; trois diagrammes ont été ajoutés car ils décrivent des règles de gestion délicates (panier,
+changement de statut) ou parce que la conception MVC était trop dense pour un seul diagramme.
+
+\begin{table}[H]
+  \centering\small
+  \caption{Diagrammes UML du projet}
+  \begin{tabularx}{\linewidth}{LP{4.6cm}P{2.6cm}}
+    \ligneentete
+    \entete{Diagramme} & \entete{Fichier} & \entete{Type} \\
+    Cas d'utilisation Visiteur et Client & \code{cas-utilisation-client} & Cas d'utilisation \\
+    Cas d'utilisation Administrateur & \code{cas-utilisation-admin} & Cas d'utilisation \\
+    Classes du domaine & \code{classes-domaine} & Classes \\
+    Conception MVC (1/2) : filtres, contrôleurs, services & \code{classes-conception-web} & Classes \\
+    Conception MVC (2/2) : services, DAO, modèle & \code{classes-conception-metier} & Classes \\
+    S'authentifier & \code{sequence-authentification} & Séquence \\
+    Passer une commande & \code{sequence-passer-commande} & Séquence \\
+    Ajouter au panier (ajout) & \code{sequence-ajouter-panier} & Séquence \\
+    Changer le statut d'une commande (ajout) & \code{sequence-changer-statut} & Séquence \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Cas d'utilisation : Visiteur et Client}
+
+Le Client hérite du Visiteur (généralisation). Le Visiteur consulte le catalogue (BF05), la fiche produit
+(BF08), s'inscrit (BF01) et se connecte (BF02) ; le filtre par catégorie (BF06) et la recherche (BF07)
+étendent la consultation du catalogue. Les cas du Client (panier, commande, historique) incluent
+« Se connecter » (RG08). « Passer une commande » inclut « Consulter le panier » ; le détail d'une commande
+(BF15) étend l'historique et l'annulation (BF16) étend le détail (figure~\ref{fig:cu-client}).
+
+\diagramme{cas-utilisation-client}{Cas d'utilisation Visiteur et Client}{fig:cu-client}
+
+\section{Cas d'utilisation : Administrateur}
+
+Tous les cas du back-office incluent « Se connecter ». « Gérer » signifie créer, consulter, modifier et
+supprimer. Le filtre par statut et le changement de statut étendent la consultation des commandes ;
+l'activation ou la désactivation d'un compte étend la liste des utilisateurs. La légende rappelle les règles
+RG04, RG13, RG14 et RG15 (figure~\ref{fig:cu-admin}).
+
+\diagramme{cas-utilisation-admin}{Cas d'utilisation Administrateur}{fig:cu-admin}
+
+\section{Classes du domaine}
+
+Cinq entités persistantes : \code{Utilisateur}, \code{Categorie}, \code{Produit}, \code{Commande}, \code{LigneCommande}, et deux
+énumérations : \code{Role} (CLIENT, ADMIN) et \code{StatutCommande} (EN\_ATTENTE, VALIDEE, EXPEDIEE, LIVREE, ANNULEE).
+\code{LigneCommande} est une classe d'association porteuse d'attributs (quantité, prix unitaire) entre
+\code{Commande} et \code{Produit}, à la place d'une association plusieurs-à-plusieurs simple. La relation
+\code{Commande} – \code{LigneCommande} est une composition (1..* lignes). Les notes rappellent RG05, RG10, RG11, RG13
+et RG15 (figure~\ref{fig:domaine}).
+
+\diagramme{classes-domaine}{Diagramme de classes du domaine}{fig:domaine}
+
+\begin{landscape}
+\section{Conception MVC (1/2) : filtres, contrôleurs et services}
+
+Ce diagramme (figure~\ref{fig:conception-web}) montre les trois filtres, leurs motifs d'URL et leur ordre
+(déclarés dans \code{web.xml}, voir section~\ref{sec:securite}), les treize servlets avec leur URL
+(\code{@WebServlet}), le service appelé par chacune et le renvoi vers les JSP de \code{WEB-INF/views}.
+\code{TableauDeBordServlet} est la seule servlet qui appelle deux services (\code{CommandeService} et
+\code{CatalogueService}), car le tableau de bord agrège des données des deux domaines.
+
+\diagrammesuite{classes-conception-web}{Classes de conception MVC (1/2) : filtres, contrôleurs et services}{fig:conception-web}
+\end{landscape}
+
+\begin{landscape}
+\section{Conception MVC (2/2) : services, DAO et modèle}
+
+Signatures des méthodes des quatre services, de \code{RegleMetierException}, de \code{GenericDao<T>} et des quatre DAO
+spécifiques, des classes du modèle (dont \code{Panier} et \code{LignePanier}, objets de session non persistés) et de
+\code{HibernateUtil}, \code{DemarrageListener} et \code{Parametres}. Les noms de méthodes du code sont ceux de ce
+diagramme (figure~\ref{fig:conception-metier}).
+
+\diagrammesuite{classes-conception-metier}{Classes de conception MVC (2/2) : services, DAO et modèle}{fig:conception-metier}
+\end{landscape}
+
+\begin{landscape}
+\section{Séquence : S'authentifier}
+
+\code{ConnexionServlet} délègue à \code{AuthService.authentifier}, qui recherche l'utilisateur par e-mail
+(HQL à paramètre nommé) et vérifie le mot de passe avec \code{BCrypt.checkpw}. Trois issues : identifiants
+incorrects (même message que l'e-mail existe ou non), compte désactivé, ou succès avec redirection selon le
+rôle (tableau de bord pour l'administrateur, catalogue pour le client). Au succès, l'ancienne session est
+invalidée et une nouvelle session est créée (contre la fixation de session). Le diagramme
+(figure~\ref{fig:seq-auth}) montre aussi la déconnexion, qui n'accepte que la méthode POST (un GET reçoit
+l'erreur 405).
+
+\diagrammesuite[0.64]{sequence-authentification}{Diagramme de séquence : S'authentifier}{fig:seq-auth}
+\end{landscape}
+
+\begin{landscape}
+\section{Séquence : Passer une commande}
+
+Séquence centrale du projet (figure~\ref{fig:seq-commande}). Après le contrôle d'accès (\code{AuthFilter}),
+\code{CommandeService.passerCommande} ouvre une transaction, recharge chaque produit du panier avec un verrou en
+écriture (par identifiant croissant), vérifie qu'il est actif et que le stock suffit, décrémente le stock, crée
+les lignes avec le prix courant (RG10), calcule le total (RG11) puis enregistre la commande et ses lignes par
+cascade. Après le rechargement de l'utilisateur, un compte désactivé depuis sa connexion est refusé (BF22).
+Toute anomalie provoque un rollback (RG12) et la page de validation est réaffichée avec le message, le panier
+étant conservé.
+
+\diagrammesuite[0.64]{sequence-passer-commande}{Diagramme de séquence : Passer une commande}{fig:seq-commande}
+\end{landscape}
+
+\begin{landscape}
+\section{Séquence : Ajouter au panier}
+
+Le diagramme (figure~\ref{fig:seq-panier}) montre le refus par \code{AuthFilter} d'un visiteur ou d'un
+administrateur (RG08), puis les contrôles de \code{PanierService} : produit inexistant ou inactif
+(\code{ProduitDao.trouverActifParId}, RG15), quantité invalide, rupture (RG06), quantité cumulée supérieure au
+stock (RG07). Le panier est un objet de la session HTTP ; le stock est revérifié à la validation de la commande.
+
+\diagrammesuite{sequence-ajouter-panier}{Diagramme de séquence : Ajouter au panier}{fig:seq-panier}
+\end{landscape}
+
+\begin{landscape}
+\section{Séquence : Changer le statut d'une commande}
+
+Le diagramme (figure~\ref{fig:seq-statut}) montre d'abord le contrôle d'accès de \code{AdminFilter} :
+redirection vers la connexion pour un visiteur, erreur 403 pour un client. \code{CommandeService.changerStatut}
+verrouille la commande, vérifie que la transition est autorisée (RG13) et, pour une annulation, réintègre les
+quantités dans le stock (RG14) par une requête \code{update} calculée par la base, dans la même transaction que
+le changement de statut.
+
+\diagrammesuite{sequence-changer-statut}{Diagramme de séquence : Changer le statut d'une commande}{fig:seq-statut}
+\end{landscape}
