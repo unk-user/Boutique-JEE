@@ -17,6 +17,7 @@ package "service" {
     + listerProduits(categorieId : Long, motCle : String, page : int) : List<Produit>
     + compterProduits(categorieId : Long, motCle : String) : long
     + trouverProduit(id : Long) : Produit
+    + trouverProduitActif(id : Long) : Produit
     + listerTousProduits(page : int) : List<Produit>
     + compterTousProduits() : long
     + enregistrerProduit(produit : Produit, categorieId : Long)
@@ -73,6 +74,7 @@ package "dao" {
   class ProduitDao {
     + rechercher(categorieId : Long, motCle : String, debut : int, taille : int) : List<Produit>
     + compterRecherche(categorieId : Long, motCle : String) : long
+    + trouverActifParId(id : Long) : Produit
     + listerPagine(debut : int, taille : int) : List<Produit>
     + compter() : long
     + estCommande(produitId : Long) : boolean
