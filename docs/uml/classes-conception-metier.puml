@@ -9,6 +9,7 @@ package "service" {
     + inscrire(utilisateur : Utilisateur, motDePasse : String) : Utilisateur
     + authentifier(email : String, motDePasse : String) : Utilisateur
     + modifierProfil(utilisateur : Utilisateur) : Utilisateur
+    + changerMotDePasse(id : Long, motDePasseActuel : String, nouveauMotDePasse : String)
     + listerUtilisateurs(page : int) : List<Utilisateur>
     + compterUtilisateurs() : long
     + changerEtatCompte(id : Long, actif : boolean)
