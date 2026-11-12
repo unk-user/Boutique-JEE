@@ -87,7 +87,7 @@ invalidée et une nouvelle session est créée (contre la fixation de session). 
 (figure~\ref{fig:seq-auth}) montre aussi la déconnexion, qui n'accepte que la méthode POST (un GET reçoit
 l'erreur 405).
 
-\diagrammesuite{sequence-authentification}{Diagramme de séquence : S'authentifier}{fig:seq-auth}
+\diagrammesuite[0.64]{sequence-authentification}{Diagramme de séquence : S'authentifier}{fig:seq-auth}
 \end{landscape}
 
 \begin{landscape}
@@ -101,7 +101,7 @@ cascade. Après le rechargement de l'utilisateur, un compte désactivé depuis s
 Toute anomalie provoque un rollback (RG12) et la page de validation est réaffichée avec le message, le panier
 étant conservé.
 
-\diagrammesuite{sequence-passer-commande}{Diagramme de séquence : Passer une commande}{fig:seq-commande}
+\diagrammesuite[0.64]{sequence-passer-commande}{Diagramme de séquence : Passer une commande}{fig:seq-commande}
 \end{landscape}
 
 \begin{landscape}
