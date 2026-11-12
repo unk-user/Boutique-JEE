@@ -44,7 +44,7 @@
                                 <input type="hidden" name="action" value="stock">
                                 <input type="hidden" name="id" value="${produit.id}">
                                 <input type="hidden" name="page" value="${pageCourante}">
-                                <input type="number" name="stock" value="${produit.stock}" min="0" required
+                                <input type="number" name="stock" value="${produit.stock}" min="0" max="2147483647" required
                                        class="form-control form-control-sm" style="width: 5.5rem"
                                        aria-label="Stock">
                                 <button type="submit" class="btn btn-sm btn-outline-primary">OK</button>
