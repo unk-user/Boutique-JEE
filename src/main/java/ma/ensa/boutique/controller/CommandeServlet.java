@@ -57,6 +57,10 @@ public class CommandeServlet extends HttpServlet {
             throws ServletException, IOException {
         HttpSession session = requete.getSession();
         Utilisateur utilisateur = (Utilisateur) session.getAttribute("utilisateur");
+        if ("annuler".equals(requete.getParameter("action"))) {
+            annuler(requete, reponse, utilisateur);
+            return;
+        }
         Panier panier = (Panier) session.getAttribute("panier");
         String adresseLivraison = requete.getParameter("adresseLivraison");
 
@@ -71,6 +75,21 @@ public class CommandeServlet extends HttpServlet {
             requete.setAttribute("erreur", e.getMessage());
             afficherValidation(requete, reponse, adresseLivraison);
         }
+    }
+
+    private void annuler(HttpServletRequest requete, HttpServletResponse reponse, Utilisateur utilisateur)
+            throws IOException {
+        HttpSession session = requete.getSession();
+        Long id = Parametres.lireLong(requete.getParameter("commandeId"));
+        String cible = "/client/commandes";
+        try {
+            commandeService.annulerCommandeClient(id, utilisateur.getId());
+            session.setAttribute("flashSucces", "Votre commande n° " + id + " a été annulée.");
+            cible += "?id=" + id;
+        } catch (RegleMetierException e) {
+            session.setAttribute("flashErreur", e.getMessage());
+        }
+        reponse.sendRedirect(requete.getContextPath() + cible);
     }
 
     private void afficherValidation(HttpServletRequest requete, HttpServletResponse reponse, String adresse)

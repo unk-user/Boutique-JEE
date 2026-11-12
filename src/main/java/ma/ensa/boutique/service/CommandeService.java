@@ -104,6 +104,22 @@ public class CommandeService {
         return commande;
     }
 
+    public void annulerCommandeClient(Long commandeId, Long utilisateurId) {
+        enTransaction(() -> {
+            Commande commande = commandeDao.trouverEtVerrouiller(commandeId);
+            // RG16
+            if (commande == null || !commande.getUtilisateur().getId().equals(utilisateurId)) {
+                throw new RegleMetierException("Commande introuvable.");
+            }
+            if (commande.getStatut() != StatutCommande.EN_ATTENTE) {
+                throw new RegleMetierException("Seule une commande « En attente » peut être annulée.");
+            }
+            // RG13, RG14
+            appliquerStatut(commande, StatutCommande.ANNULEE);
+            return null;
+        });
+    }
+
     public List<Commande> listerCommandes(StatutCommande statut, int page) {
         return enTransaction(() -> commandeDao.listerParStatut(statut, debut(page), TAILLE_PAGE));
     }
