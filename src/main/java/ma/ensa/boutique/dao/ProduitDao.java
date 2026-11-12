@@ -2,6 +2,7 @@ package ma.ensa.boutique.dao;
 
 import ma.ensa.boutique.model.Produit;
 
+import org.hibernate.LockMode;
 import org.hibernate.query.Query;
 
 import java.util.List;
@@ -31,6 +32,13 @@ public class ProduitDao extends GenericDao<Produit> {
                 .setParameter("id", produitId)
                 .uniqueResult();
         return nombre > 0;
+    }
+
+    // Passage de commande (RG12) : recharge le produit avec un verrou en écriture (select ... for update).
+    // Deux commandes simultanées sur le même produit sont ainsi traitées l'une après l'autre,
+    // ce qui empêche de vendre plus que le stock. Le verrou est libéré au commit ou au rollback.
+    public Produit trouverEtVerrouiller(Long id) {
+        return id == null ? null : session().get(Produit.class, id, LockMode.PESSIMISTIC_WRITE);
     }
 
     // ---------- Catalogue public : produits actifs uniquement (RG15) ----------
