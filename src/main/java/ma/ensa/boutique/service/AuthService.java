@@ -92,18 +92,75 @@ public class AuthService {
         });
     }
 
+    public Utilisateur modifierProfil(Utilisateur saisie) {
+        if (estVide(saisie.getNom()) || estVide(saisie.getPrenom()) || estVide(saisie.getEmail())) {
+            throw new RegleMetierException("Le nom, le prénom et l'e-mail sont obligatoires.");
+        }
+        verifierEmail(saisie);
+        verifierLongueurs(saisie);
+        String email = saisie.getEmail().trim().toLowerCase();
+
+        return enTransaction(() -> {
+            Utilisateur utilisateur = utilisateurDao.trouverParId(saisie.getId());
+            if (utilisateur == null) {
+                throw new RegleMetierException("Utilisateur introuvable.");
+            }
+            // RG01
+            Utilisateur homonyme = utilisateurDao.trouverParEmail(email);
+            if (homonyme != null && !homonyme.getId().equals(utilisateur.getId())) {
+                throw new RegleMetierException("Cette adresse e-mail est déjà utilisée.");
+            }
+            utilisateur.setNom(saisie.getNom().trim());
+            utilisateur.setPrenom(saisie.getPrenom().trim());
+            utilisateur.setEmail(email);
+            utilisateur.setAdresse(nettoyer(saisie.getAdresse()));
+            utilisateur.setTelephone(nettoyer(saisie.getTelephone()));
+            return utilisateur;
+        });
+    }
+
+    public void changerMotDePasse(Long id, String motDePasseActuel, String nouveauMotDePasse) {
+        if (estVide(motDePasseActuel) || estVide(nouveauMotDePasse)) {
+            throw new RegleMetierException("Veuillez saisir votre mot de passe actuel et le nouveau.");
+        }
+        verifierMotDePasse(nouveauMotDePasse);
+        enTransaction(() -> {
+            Utilisateur utilisateur = utilisateurDao.trouverParId(id);
+            if (utilisateur == null) {
+                throw new RegleMetierException("Utilisateur introuvable.");
+            }
+            if (!BCrypt.checkpw(motDePasseActuel, utilisateur.getMotDePasse())) {
+                throw new RegleMetierException("Le mot de passe actuel est incorrect.");
+            }
+            utilisateur.setMotDePasse(BCrypt.hashpw(nouveauMotDePasse, BCrypt.gensalt()));
+            return null;
+        });
+    }
+
     private void verifierChamps(Utilisateur utilisateur, String motDePasse) {
         if (estVide(utilisateur.getNom()) || estVide(utilisateur.getPrenom())
                 || estVide(utilisateur.getEmail()) || estVide(motDePasse)) {
             throw new RegleMetierException("Le nom, le prénom, l'e-mail et le mot de passe sont obligatoires.");
         }
+        verifierEmail(utilisateur);
+        verifierMotDePasse(motDePasse);
+        verifierLongueurs(utilisateur);
+    }
+
+    private void verifierEmail(Utilisateur utilisateur) {
         if (!FORMAT_EMAIL.matcher(utilisateur.getEmail().trim()).matches()) {
             throw new RegleMetierException("L'adresse e-mail n'est pas valide.");
         }
+    }
+
+    private void verifierMotDePasse(String motDePasse) {
         if (motDePasse.length() < LONGUEUR_MIN_MOT_DE_PASSE) {
             throw new RegleMetierException("Le mot de passe doit contenir au moins "
                     + LONGUEUR_MIN_MOT_DE_PASSE + " caractères.");
         }
+    }
+
+    private void verifierLongueurs(Utilisateur utilisateur) {
         if (depasse(utilisateur.getNom(), 100) || depasse(utilisateur.getPrenom(), 100)
                 || depasse(utilisateur.getEmail(), 150) || depasse(utilisateur.getAdresse(), 255)
                 || depasse(utilisateur.getTelephone(), 20)) {

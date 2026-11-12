@@ -29,6 +29,7 @@
                 </c:if>
                 <c:if test="${sessionScope.utilisateur.role == 'CLIENT'}">
                     <li class="nav-item"><a class="nav-link" href="${ctx}/client/commandes">Mes commandes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/client/profil">Mon profil</a></li>
                 </c:if>
             </ul>
             <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mt-md-0">
