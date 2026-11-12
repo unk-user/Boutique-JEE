@@ -106,7 +106,8 @@ rejoindre dans la branche de conception et de réalisation.
 - Conception : diagrammes de classes de conception (couche web, couche métier) et diagrammes de séquence.
   Tous les diagrammes ont été versionnés avant la première ligne de code (commit `4fc0fac`), puis mis à jour
   au fil des itérations quand l'implémentation a précisé la conception (commits `docs:` des branches
-  `feature/catalogue`, `feature/commande`, `feature/gestion-commandes` et `feature/p3`).
+  `feature/catalogue`, `feature/commande`, `feature/gestion-commandes`, `feature/p3` et
+  `feature/coherence-finale`).
 - Réalisation : une itération par groupe de fonctionnalités, chacune livrée sur une branche `feature/*`,
   vérifiée par des tests manuels (navigateur et requêtes HTTP) puis fusionnée dans `main` par pull request.
 
@@ -128,12 +129,13 @@ description reprend les besoins couverts, les règles appliquées et les tests m
 | 3 | Historique et gestion des commandes (BF14, BF15, BF20, BF21) | #11 | `feature/gestion-commandes` | #17 |
 | 4 | Utilisateurs (BF22), pages d'erreur, validation, responsive | #12 | `feature/finitions` | #18 |
 | 4 | Besoins P3 : profil (BF04), annulation client (BF16), tableau de bord (BF23) | #12 | `feature/p3` | #19 |
-| 5 | README et rapport | #13 | `feature/livrables` | PR de livraison |
+| 5 | README et rapport | #13 | `feature/livrables` | #20 |
+| 5 | Cohérence finale : séquences, ordre des filtres, documentation | #21 | `feature/coherence-finale` | #22 |
 
 Remarques :
 
 - Les tickets et les pull requests partagent la même numérotation sur GitHub, d'où les numéros non
-  consécutifs des PR (#1 à #3, puis #14 à #19).
+  consécutifs des PR (#1 à #3, puis #14 à #20, puis #22).
 - Le texte « Closes #N » en fin de description de PR ferme automatiquement le ticket à la fusion.
 - Les P3 ont été regroupés dans une PR séparée (#19) pour pouvoir être isolés de l'étape 9 si nécessaire.
 
@@ -200,7 +202,8 @@ et RG15.
 
 ![Conception MVC, couche web](../uml/classes-conception-web.svg)
 
-Ce diagramme montre les trois filtres et leurs motifs d'URL, les treize servlets avec leur URL
+Ce diagramme montre les trois filtres, leurs motifs d'URL et leur ordre (déclarés dans `web.xml`, voir
+section 6.6), les treize servlets avec leur URL
 (`@WebServlet`), le service appelé par chacune et le renvoi vers les JSP de `WEB-INF/views`.
 `TableauDeBordServlet` est la seule servlet qui appelle deux services (`CommandeService` et
 `CatalogueService`), car le tableau de bord agrège des données des deux domaines.
@@ -211,7 +214,8 @@ Ce diagramme montre les trois filtres et leurs motifs d'URL, les treize servlets
 
 Signatures des méthodes des quatre services, de `RegleMetierException`, de `GenericDao<T>` et des quatre DAO
 spécifiques, des classes du modèle (dont `Panier` et `LignePanier`, objets de session non persistés) et de
-`HibernateUtil`. Les noms de méthodes du code sont ceux de ce diagramme.
+`HibernateUtil`, `DemarrageListener` et `Parametres`. Les noms de méthodes du code sont ceux de ce
+diagramme.
 
 ### 3.6 Séquence : S'authentifier
 
@@ -220,7 +224,9 @@ spécifiques, des classes du modèle (dont `Panier` et `LignePanier`, objets de 
 `ConnexionServlet` délègue à `AuthService.authentifier`, qui recherche l'utilisateur par e-mail
 (HQL à paramètre nommé) et vérifie le mot de passe avec `BCrypt.checkpw`. Trois issues : identifiants
 incorrects (même message que l'e-mail existe ou non), compte désactivé, ou succès avec redirection selon le
-rôle (tableau de bord pour l'administrateur, catalogue pour le client).
+rôle (tableau de bord pour l'administrateur, catalogue pour le client). Au succès, l'ancienne session est
+invalidée et une nouvelle session est créée (contre la fixation de session). Le diagramme montre aussi la
+déconnexion, qui n'accepte que la méthode POST (un GET reçoit l'erreur 405).
 
 ### 3.7 Séquence : Passer une commande
 
@@ -229,7 +235,8 @@ rôle (tableau de bord pour l'administrateur, catalogue pour le client).
 Séquence centrale du projet. Après le contrôle d'accès (`AuthFilter`), `CommandeService.passerCommande`
 ouvre une transaction, recharge chaque produit du panier avec un verrou en écriture (par identifiant
 croissant), vérifie qu'il est actif et que le stock suffit, décrémente le stock, crée les lignes avec le prix
-courant (RG10), calcule le total (RG11) puis enregistre la commande et ses lignes par cascade. Toute
+courant (RG10), calcule le total (RG11) puis enregistre la commande et ses lignes par cascade. Après le
+rechargement de l'utilisateur, un compte désactivé depuis sa connexion est refusé (BF22). Toute
 anomalie provoque un rollback (RG12) et la page de validation est réaffichée avec le message, le panier
 étant conservé.
 
@@ -238,7 +245,7 @@ anomalie provoque un rollback (RG12) et la page de validation est réaffichée a
 ![Séquence Ajouter au panier](../uml/sequence-ajouter-panier.svg)
 
 Montre le refus par `AuthFilter` d'un visiteur ou d'un administrateur (RG08), puis les contrôles de
-`PanierService` : produit inexistant ou inactif, quantité invalide, rupture (RG06), quantité cumulée
+`PanierService` : produit inexistant ou inactif (`ProduitDao.trouverActifParId`, RG15), quantité invalide, rupture (RG06), quantité cumulée
 supérieure au stock (RG07). Le panier est un objet de la session HTTP ; le stock est revérifié à la
 validation de la commande.
 
@@ -246,7 +253,8 @@ validation de la commande.
 
 ![Séquence Changer le statut d'une commande](../uml/sequence-changer-statut.svg)
 
-`CommandeService.changerStatut` verrouille la commande, vérifie que la transition est autorisée (RG13) et,
+Le diagramme montre d'abord le contrôle d'accès de `AdminFilter` : redirection vers la connexion pour un
+visiteur, erreur 403 pour un client. `CommandeService.changerStatut` verrouille la commande, vérifie que la transition est autorisée (RG13) et,
 pour une annulation, réintègre les quantités dans le stock (RG14) par une requête `update` calculée par la
 base, dans la même transaction que le changement de statut.
 
@@ -721,6 +729,9 @@ Quand la saisie doit être corrigée (inscription, profil, validation de command
 - **Contrôle d'accès** par filtres (BNF02) : `AuthFilter` (`/client/*`) exige le rôle CLIENT, un visiteur
   est redirigé vers la connexion et un administrateur vers son tableau de bord ; `AdminFilter` (`/admin/*`)
   exige le rôle ADMIN, un visiteur est redirigé vers la connexion et un client reçoit une erreur 403.
+  Les trois filtres (`EncodingFilter`, `AuthFilter`, `AdminFilter`) sont déclarés dans `web.xml` : seul
+  l'ordre des `<filter-mapping>` est garanti par la spécification Servlet, ce qui assure que
+  `EncodingFilter` s'exécute en premier.
 - **Mots de passe** hachés avec BCrypt (sel intégré) ; message d'échec identique que l'e-mail existe ou non.
 - **Injection SQL** : toutes les requêtes HQL utilisent des paramètres nommés ; la requête de recherche du
   catalogue est construite dynamiquement, mais seules des clauses fixes sont concaténées, jamais une valeur
