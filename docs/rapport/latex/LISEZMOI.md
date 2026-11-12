@@ -19,7 +19,6 @@ sudo dnf install latexmk texlive-luatex texlive-luahbtex texlive-babel-french te
 Les diagrammes `docs/uml/*.svg` sont convertis en PDF dans `build/figures/`, puis LuaLaTeX produit
 `docs/rapport/rapport.pdf`.
 
-## À compléter
+## Facultatif
 
-- `sections/07-difficultes.tex` : difficultés rencontrées et solutions.
-- `images/` : logos facultatifs de la page de garde (`logo-uiz.png`, `logo-ensa.png`).
+- `images/` : logos de la page de garde (`logo-uiz.png`, `logo-ensa.png`), affichés s'ils sont présents.
