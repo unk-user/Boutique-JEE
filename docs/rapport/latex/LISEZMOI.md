@@ -22,5 +22,4 @@ Les diagrammes `docs/uml/*.svg` sont convertis en PDF dans `build/figures/`, pui
 ## À compléter
 
 - `sections/07-difficultes.tex` : difficultés rencontrées et solutions.
-- `captures/admin-utilisateurs.png` : seule capture manquante (un encadré rouge la signale dans le PDF).
 - `images/` : logos facultatifs de la page de garde (`logo-uiz.png`, `logo-ensa.png`).
