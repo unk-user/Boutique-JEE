@@ -1,0 +1,48 @@
+@startuml cas-utilisation-admin
+title Cas d'utilisation : Administrateur
+left to right direction
+skinparam packageStyle rectangle
+
+actor Administrateur as Admin
+
+rectangle "Back-office" {
+  usecase "Se connecter\n(BF02)" as UC02
+  usecase "Se déconnecter\n(BF03)" as UC03
+  usecase "Gérer les catégories\n(BF17)" as UC17
+  usecase "Gérer les produits\n(BF18)" as UC18
+  usecase "Gérer le stock\nd'un produit (BF19)" as UC19
+  usecase "Consulter toutes\nles commandes (BF20)" as UC20
+  usecase "Filtrer les commandes\npar statut (BF20)" as UC20F
+  usecase "Changer le statut\nd'une commande (BF21)" as UC21
+  usecase "Consulter les utilisateurs\n(BF22)" as UC22
+  usecase "Activer ou désactiver\nun compte (BF22)" as UC22A
+  usecase "Consulter le tableau\nde bord (BF23)" as UC23
+}
+
+Admin --> UC03
+Admin --> UC17
+Admin --> UC18
+Admin --> UC19
+Admin --> UC20
+Admin --> UC22
+Admin --> UC23
+
+UC17 ..> UC02 : <<include>>
+UC18 ..> UC02 : <<include>>
+UC19 ..> UC02 : <<include>>
+UC20 ..> UC02 : <<include>>
+UC22 ..> UC02 : <<include>>
+UC23 ..> UC02 : <<include>>
+
+UC20F .> UC20 : <<extend>>
+UC20 <.. UC21 : <<extend>>
+UC22A .> UC22 : <<extend>>
+
+legend bottom
+  Gérer = créer, consulter, modifier, supprimer.
+  RG04 : une catégorie contenant des produits ne peut pas être supprimée.
+  RG15 : un produit déjà commandé est désactivé, jamais supprimé.
+  RG13 : EN_ATTENTE -> VALIDEE -> EXPEDIEE -> LIVREE ; ANNULEE depuis EN_ATTENTE ou VALIDEE.
+  RG14 : l'annulation d'une commande réintègre les quantités dans le stock.
+endlegend
+@enduml

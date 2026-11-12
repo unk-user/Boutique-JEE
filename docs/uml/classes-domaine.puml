@@ -1,0 +1,93 @@
+@startuml classes-domaine
+title Diagramme de classes du domaine
+skinparam classAttributeIconSize 0
+hide methods
+hide circle
+
+enum Role {
+  CLIENT
+  ADMIN
+}
+
+enum StatutCommande {
+  EN_ATTENTE
+  VALIDEE
+  EXPEDIEE
+  LIVREE
+  ANNULEE
+}
+
+class Utilisateur {
+  - id : Long
+  - nom : String
+  - prenom : String
+  - email : String {unique}
+  - motDePasse : String {haché BCrypt}
+  - adresse : String
+  - telephone : String
+  - role : Role
+  - actif : boolean
+  - dateInscription : LocalDateTime
+}
+
+class Categorie {
+  - id : Long
+  - nom : String {unique}
+  - description : String
+}
+
+class Produit {
+  - id : Long
+  - nom : String
+  - description : String
+  - prix : BigDecimal
+  - stock : int
+  - imageUrl : String
+  - actif : boolean
+  - dateCreation : LocalDateTime
+}
+
+class Commande {
+  - id : Long
+  - dateCommande : LocalDateTime
+  - statut : StatutCommande
+  - adresseLivraison : String
+  - montantTotal : BigDecimal
+}
+
+class LigneCommande {
+  - id : Long
+  - quantite : int
+  - prixUnitaire : BigDecimal
+}
+
+Categorie "1" -- "0..*" Produit : contient >
+Utilisateur "1" -- "0..*" Commande : passe >
+Commande "1" *-- "1..*" LigneCommande : se compose de >
+LigneCommande "0..*" -- "1" Produit : concerne >
+
+Utilisateur ..> Role
+Commande ..> StatutCommande
+
+note right of Produit
+  RG05 : prix > 0, stock >= 0
+  RG15 : un produit déjà commandé
+  est désactivé (actif = faux),
+  jamais supprimé
+end note
+
+note bottom of LigneCommande
+  RG10 : prixUnitaire copié depuis
+  Produit.prix au moment de la commande
+end note
+
+note right of Commande
+  RG11 : montantTotal =
+  somme(quantite x prixUnitaire)
+end note
+
+note bottom of StatutCommande
+  RG13 : EN_ATTENTE -> VALIDEE -> EXPEDIEE -> LIVREE
+  ANNULEE uniquement depuis EN_ATTENTE ou VALIDEE
+end note
+@enduml

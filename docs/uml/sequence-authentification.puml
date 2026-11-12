@@ -1,0 +1,51 @@
+@startuml sequence-authentification
+title Séquence : S'authentifier (BF02)
+autonumber
+hide footbox
+
+actor Visiteur
+boundary "connexion.jsp" as Vue
+participant EncodingFilter
+control ConnexionServlet
+participant AuthService
+participant UtilisateurDao
+participant "Session Hibernate" as Session
+database MySQL
+
+Visiteur -> Vue : saisit e-mail et mot de passe
+Vue -> EncodingFilter : POST /connexion (email, motDePasse)
+EncodingFilter -> ConnexionServlet : doPost(req, rep)
+ConnexionServlet -> AuthService : authentifier(email, motDePasse)
+AuthService -> Session : beginTransaction()
+AuthService -> UtilisateurDao : trouverParEmail(email)
+UtilisateurDao -> Session : createQuery("from Utilisateur u where u.email = :email")
+Session -> MySQL : SELECT ... WHERE email = ?
+MySQL --> Session : ligne ou vide
+Session --> UtilisateurDao : utilisateur ou null
+UtilisateurDao --> AuthService : utilisateur ou null
+AuthService -> Session : commit()
+
+alt utilisateur absent ou BCrypt.checkpw(motDePasse, hash) faux
+  AuthService --> ConnexionServlet : RegleMetierException("E-mail ou mot de passe incorrect.")
+  ConnexionServlet -> Vue : forward avec message d'erreur
+  Vue --> Visiteur : formulaire et message
+else compte désactivé (actif = faux)
+  AuthService --> ConnexionServlet : RegleMetierException("Ce compte est désactivé.")
+  ConnexionServlet -> Vue : forward avec message d'erreur
+  Vue --> Visiteur : formulaire et message
+else identifiants valides
+  AuthService --> ConnexionServlet : utilisateur
+  ConnexionServlet -> ConnexionServlet : session.setAttribute("utilisateur", utilisateur)
+  alt role = ADMIN
+    ConnexionServlet --> Visiteur : redirect /admin/tableau-de-bord
+  else role = CLIENT
+    ConnexionServlet --> Visiteur : redirect /catalogue
+  end
+end
+
+note over ConnexionServlet
+  BNF04 : expiration de la session après
+  30 minutes d'inactivité (web.xml) ;
+  /deconnexion appelle session.invalidate()
+end note
+@enduml

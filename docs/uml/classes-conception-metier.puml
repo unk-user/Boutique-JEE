@@ -1,0 +1,172 @@
+@startuml classes-conception-metier
+title Conception MVC (2/2) : services, DAO et modèle
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+hide empty members
+
+package "service" {
+  class AuthService {
+    + inscrire(utilisateur : Utilisateur, motDePasse : String) : Utilisateur
+    + authentifier(email : String, motDePasse : String) : Utilisateur
+    + modifierProfil(utilisateur : Utilisateur) : Utilisateur
+    + listerUtilisateurs(page : int) : List<Utilisateur>
+    + compterUtilisateurs() : long
+    + changerEtatCompte(id : Long, actif : boolean)
+  }
+  class CatalogueService {
+    + listerProduits(categorieId : Long, motCle : String, page : int) : List<Produit>
+    + compterProduits(categorieId : Long, motCle : String) : long
+    + trouverProduit(id : Long) : Produit
+    + listerTousProduits(page : int) : List<Produit>
+    + compterTousProduits() : long
+    + enregistrerProduit(produit : Produit, categorieId : Long)
+    + supprimerProduit(id : Long)
+    + modifierStock(id : Long, stock : int)
+    + listerProduitsEnRupture() : List<Produit>
+    + listerCategories() : List<Categorie>
+    + trouverCategorie(id : Long) : Categorie
+    + enregistrerCategorie(categorie : Categorie)
+    + supprimerCategorie(id : Long)
+  }
+  class PanierService {
+    + ajouter(panier : Panier, produitId : Long, quantite : int)
+    + modifierQuantite(panier : Panier, produitId : Long, quantite : int)
+    + retirer(panier : Panier, produitId : Long)
+    + vider(panier : Panier)
+  }
+  class CommandeService {
+    + passerCommande(utilisateurId : Long, panier : Panier, adresseLivraison : String) : Commande
+    + listerCommandesClient(utilisateurId : Long, page : int) : List<Commande>
+    + compterCommandesClient(utilisateurId : Long) : long
+    + trouverCommandeClient(commandeId : Long, utilisateurId : Long) : Commande
+    + annulerCommandeClient(commandeId : Long, utilisateurId : Long)
+    + listerCommandes(statut : StatutCommande, page : int) : List<Commande>
+    + compterCommandes(statut : StatutCommande) : long
+    + trouverCommande(id : Long) : Commande
+    + changerStatut(commandeId : Long, nouveauStatut : StatutCommande)
+    + calculerChiffreAffaires() : BigDecimal
+  }
+  class RegleMetierException {
+    + RegleMetierException(message : String)
+  }
+}
+
+package "dao" {
+  abstract class "GenericDao<T>" as GenericDao {
+    # classe : Class<T>
+    # session() : Session
+    + sauvegarder(entite : T)
+    + modifier(entite : T) : T
+    + supprimer(entite : T)
+    + trouverParId(id : Long) : T
+    + listerTous() : List<T>
+  }
+  class UtilisateurDao {
+    + trouverParEmail(email : String) : Utilisateur
+    + listerPagine(debut : int, taille : int) : List<Utilisateur>
+    + compter() : long
+  }
+  class CategorieDao {
+    + trouverParNom(nom : String) : Categorie
+    + compterProduits(categorieId : Long) : long
+  }
+  class ProduitDao {
+    + rechercher(categorieId : Long, motCle : String, debut : int, taille : int) : List<Produit>
+    + compterRecherche(categorieId : Long, motCle : String) : long
+    + listerPagine(debut : int, taille : int) : List<Produit>
+    + compter() : long
+    + estCommande(produitId : Long) : boolean
+    + listerEnRupture() : List<Produit>
+  }
+  class CommandeDao {
+    + listerParUtilisateur(utilisateurId : Long, debut : int, taille : int) : List<Commande>
+    + compterParUtilisateur(utilisateurId : Long) : long
+    + listerParStatut(statut : StatutCommande, debut : int, taille : int) : List<Commande>
+    + compterParStatut(statut : StatutCommande) : long
+    + trouverAvecLignes(id : Long) : Commande
+    + calculerChiffreAffaires() : BigDecimal
+  }
+}
+
+package "model" {
+  class Utilisateur <<@Entity>>
+  class Categorie <<@Entity>>
+  class Produit <<@Entity>>
+  class Commande <<@Entity>> {
+    + ajouterLigne(ligne : LigneCommande)
+  }
+  class LigneCommande <<@Entity>>
+  class Panier <<session>> {
+    - lignes : Map<Long, LignePanier>
+    + ajouter(produit : Produit, quantite : int)
+    + modifierQuantite(produitId : Long, quantite : int)
+    + retirer(produitId : Long)
+    + vider()
+    + getLignes() : Collection<LignePanier>
+    + getQuantite(produitId : Long) : int
+    + getTotal() : BigDecimal
+    + estVide() : boolean
+  }
+  class LignePanier {
+    - produit : Produit
+    - quantite : int
+    + getSousTotal() : BigDecimal
+  }
+}
+
+package "util" {
+  class HibernateUtil {
+    - {static} sessionFactory : SessionFactory
+    + {static} getSessionFactory() : SessionFactory
+  }
+}
+
+' Services -> DAO
+AuthService ..> UtilisateurDao
+CatalogueService ..> ProduitDao
+CatalogueService ..> CategorieDao
+PanierService ..> ProduitDao
+CommandeService ..> CommandeDao
+CommandeService ..> ProduitDao
+CommandeService ..> UtilisateurDao
+
+PanierService ..> Panier
+CommandeService ..> Panier
+UtilisateurDao ..> Utilisateur
+CategorieDao ..> Categorie
+ProduitDao ..> Produit
+CommandeDao ..> Commande
+Commande "1" *-- "1..*" LigneCommande
+
+' Mise en page : services et DAO sur deux rangées
+AuthService -[hidden]right- CatalogueService
+AuthService -[hidden]down- PanierService
+CatalogueService -[hidden]down- CommandeService
+PanierService -[hidden]right- RegleMetierException
+PanierService -[hidden]down- GenericDao
+CommandeService -[hidden]down- GenericDao
+
+' Héritage DAO
+GenericDao <|-- UtilisateurDao
+GenericDao <|-- CategorieDao
+GenericDao <|-- ProduitDao
+GenericDao <|-- CommandeDao
+
+GenericDao ..> HibernateUtil
+AuthService ..> HibernateUtil
+CatalogueService ..> HibernateUtil
+PanierService ..> HibernateUtil
+CommandeService ..> HibernateUtil
+Panier "1" *-- "0..*" LignePanier
+
+
+
+legend bottom
+  Panier, LignePanier : non persistés, conservés dans la HttpSession.
+  Les services ouvrent, valident ou annulent la transaction (getCurrentSession()) ;
+  les DAO utilisent la session courante fournie par HibernateUtil (SessionFactory unique).
+  RegleMetierException : levée par un service quand une règle RG est violée,
+  son message est affiché par la JSP.
+  Les entités sont détaillées dans le diagramme de classes du domaine.
+endlegend
+@enduml

@@ -1,0 +1,64 @@
+@startuml sequence-passer-commande
+title Séquence : Passer une commande (BF13)
+autonumber
+hide footbox
+
+actor Client
+boundary "panier.jsp" as Vue
+participant AuthFilter
+control CommandeServlet
+participant CommandeService
+participant UtilisateurDao
+participant ProduitDao
+participant CommandeDao
+participant "Session Hibernate" as Session
+
+Client -> Vue : saisit l'adresse de livraison et valide
+Vue -> AuthFilter : POST /client/commandes (adresseLivraison)
+AuthFilter -> AuthFilter : utilisateur en session avec role CLIENT ?
+alt non connecté
+  AuthFilter --> Client : redirect /connexion
+else role = ADMIN (RG08)
+  AuthFilter --> Client : redirect /admin/tableau-de-bord
+else role = CLIENT
+  AuthFilter -> CommandeServlet : doPost(req, rep)
+  CommandeServlet -> CommandeServlet : panier = session.getAttribute("panier")
+  CommandeServlet -> CommandeService : passerCommande(utilisateurId, panier, adresseLivraison)
+
+  alt panier vide (RG09)
+    CommandeService --> CommandeServlet : RegleMetierException("Votre panier est vide.")
+  else panier non vide
+    CommandeService -> Session : beginTransaction()
+    CommandeService -> UtilisateurDao : trouverParId(utilisateurId)
+    UtilisateurDao --> CommandeService : utilisateur
+    CommandeService -> CommandeService : commande = new Commande(utilisateur, adresseLivraison, EN_ATTENTE)
+
+    loop pour chaque LignePanier
+      CommandeService -> ProduitDao : trouverParId(produitId)
+      ProduitDao --> CommandeService : produit
+      alt produit inactif ou stock < quantite
+        CommandeService -> Session : rollback()
+        CommandeService --> CommandeServlet : RegleMetierException("Stock insuffisant pour « nom ».")
+      else stock suffisant
+        CommandeService -> CommandeService : produit.stock -= quantite (RG12)
+        CommandeService -> CommandeService : ligne = new LigneCommande(produit, quantite, produit.prix) (RG10)
+        CommandeService -> CommandeService : commande.ajouterLigne(ligne)
+      end
+    end
+
+    CommandeService -> CommandeService : commande.montantTotal = somme(quantite x prixUnitaire) (RG11)
+    CommandeService -> CommandeDao : sauvegarder(commande)
+    note right : cascade ALL :\nles lignes sont insérées\navec la commande
+    CommandeService -> Session : commit()
+    note right : stock décrémenté et commande\nenregistrée dans la même transaction (RG12)
+    CommandeService --> CommandeServlet : commande
+  end
+
+  alt RegleMetierException
+    CommandeServlet --> Client : redirect /client/panier avec message d'erreur (panier conservé)
+  else succès
+    CommandeServlet -> CommandeServlet : panier.vider()
+    CommandeServlet --> Client : redirect /client/commandes avec message de confirmation
+  end
+end
+@enduml

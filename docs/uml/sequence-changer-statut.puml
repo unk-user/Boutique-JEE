@@ -1,0 +1,52 @@
+@startuml sequence-changer-statut
+title Séquence : Changer le statut d'une commande (BF21)
+autonumber
+hide footbox
+
+actor Administrateur as Admin
+boundary "admin/commandes.jsp" as Vue
+participant AdminFilter
+control AdminCommandeServlet
+participant CommandeService
+participant CommandeDao
+participant "Session Hibernate" as Session
+
+Admin -> Vue : choisit le nouveau statut
+Vue -> AdminFilter : POST /admin/commandes (commandeId, statut)
+AdminFilter -> AdminFilter : utilisateur en session avec role ADMIN ?
+alt non autorisé
+  AdminFilter --> Admin : redirect /connexion
+else ADMIN
+  AdminFilter -> AdminCommandeServlet : doPost(req, rep)
+  AdminCommandeServlet -> CommandeService : changerStatut(commandeId, nouveauStatut)
+  CommandeService -> Session : beginTransaction()
+  CommandeService -> CommandeDao : trouverAvecLignes(commandeId)
+  CommandeDao --> CommandeService : commande
+
+  alt transition interdite (RG13)
+    CommandeService -> Session : rollback()
+    CommandeService --> AdminCommandeServlet : RegleMetierException("Changement de statut non autorisé.")
+  else nouveauStatut = ANNULEE (depuis EN_ATTENTE ou VALIDEE)
+    loop pour chaque LigneCommande
+      CommandeService -> CommandeService : produit.stock += quantite (RG14)
+    end
+    CommandeService -> CommandeService : commande.statut = ANNULEE
+    CommandeService -> Session : commit()
+    CommandeService --> AdminCommandeServlet
+  else transition suivante du cycle
+    CommandeService -> CommandeService : commande.statut = nouveauStatut
+    CommandeService -> Session : commit()
+    CommandeService --> AdminCommandeServlet
+  end
+
+  AdminCommandeServlet --> Admin : redirect /admin/commandes avec message
+end
+
+note right of CommandeService
+  RG13 : transitions autorisées
+  EN_ATTENTE -> VALIDEE
+  VALIDEE -> EXPEDIEE
+  EXPEDIEE -> LIVREE
+  EN_ATTENTE ou VALIDEE -> ANNULEE
+end note
+@enduml

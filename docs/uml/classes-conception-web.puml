@@ -1,0 +1,83 @@
+@startuml classes-conception-web
+title Conception MVC (1/2) : filtres, contrôleurs et services
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+hide empty members
+left to right direction
+
+package "filter" {
+  class EncodingFilter <<@WebFilter("/*")>> {
+    + doFilter(req, rep, chaine)
+  }
+  class AuthFilter <<@WebFilter("/client/*")>> {
+    + doFilter(req, rep, chaine)
+  }
+  class AdminFilter <<@WebFilter("/admin/*")>> {
+    + doFilter(req, rep, chaine)
+  }
+}
+
+package "controller" {
+  class InscriptionServlet <<"/inscription">>
+  class ConnexionServlet <<"/connexion">>
+  class DeconnexionServlet <<"/deconnexion">>
+  class CatalogueServlet <<"/catalogue">>
+  class ProduitServlet <<"/produit">>
+  class ProfilServlet <<"/client/profil">>
+  class PanierServlet <<"/client/panier">>
+  class CommandeServlet <<"/client/commandes">>
+  class AdminCategorieServlet <<"/admin/categories">>
+  class AdminProduitServlet <<"/admin/produits">>
+  class AdminCommandeServlet <<"/admin/commandes">>
+  class AdminUtilisateurServlet <<"/admin/utilisateurs">>
+  class TableauDeBordServlet <<"/admin/tableau-de-bord">>
+}
+
+package "service" {
+  class AuthService
+  class CatalogueService
+  class PanierService
+  class CommandeService
+}
+
+package "WEB-INF/views" {
+  class "JSP (client, admin, commun)" as JSP <<vue>>
+}
+
+EncodingFilter ..> AuthFilter : chaîne
+EncodingFilter ..> AdminFilter : chaîne
+AuthFilter ..> ProfilServlet
+AuthFilter ..> PanierServlet
+AuthFilter ..> CommandeServlet
+AdminFilter ..> AdminCategorieServlet
+AdminFilter ..> AdminProduitServlet
+AdminFilter ..> AdminCommandeServlet
+AdminFilter ..> AdminUtilisateurServlet
+AdminFilter ..> TableauDeBordServlet
+
+' Contrôleurs -> services
+InscriptionServlet ..> AuthService
+ConnexionServlet ..> AuthService
+ProfilServlet ..> AuthService
+AdminUtilisateurServlet ..> AuthService
+CatalogueServlet ..> CatalogueService
+ProduitServlet ..> CatalogueService
+AdminCategorieServlet ..> CatalogueService
+AdminProduitServlet ..> CatalogueService
+PanierServlet ..> PanierService
+CommandeServlet ..> CommandeService
+AdminCommandeServlet ..> CommandeService
+TableauDeBordServlet ..> CommandeService
+TableauDeBordServlet ..> CatalogueService
+
+controller ..> JSP : forward
+
+note bottom of AuthFilter
+  BNF02, RG08 : utilisateur connecté avec le rôle CLIENT ;
+  non connecté : redirection vers /connexion,
+  ADMIN : redirection vers /admin/tableau-de-bord
+end note
+note bottom of AdminFilter
+  BNF02 : rôle ADMIN obligatoire
+end note
+@enduml

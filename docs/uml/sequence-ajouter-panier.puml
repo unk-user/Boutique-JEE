@@ -1,0 +1,56 @@
+@startuml sequence-ajouter-panier
+title Séquence : Ajouter au panier (BF09)
+autonumber
+hide footbox
+
+actor Client
+boundary "produit.jsp" as Vue
+participant AuthFilter
+control PanierServlet
+participant PanierService
+participant ProduitDao
+participant "Session Hibernate" as Session
+participant Panier
+
+Client -> Vue : choisit une quantité et clique « Ajouter au panier »
+Vue -> AuthFilter : POST /client/panier (action=ajouter, produitId, quantite)
+AuthFilter -> AuthFilter : utilisateur en session avec role CLIENT ?
+alt non connecté (RG08)
+  AuthFilter --> Client : redirect /connexion
+else role = ADMIN (RG08)
+  AuthFilter --> Client : redirect /admin/tableau-de-bord
+else role = CLIENT
+  AuthFilter -> PanierServlet : doPost(req, rep)
+  PanierServlet -> PanierServlet : panier = session.getAttribute("panier")\n(créé et stocké en session s'il est absent)
+  PanierServlet -> PanierService : ajouter(panier, produitId, quantite)
+  PanierService -> Session : beginTransaction()
+  PanierService -> ProduitDao : trouverParId(produitId)
+  ProduitDao --> PanierService : produit
+  PanierService -> Session : commit()
+
+  alt produit absent ou inactif
+    PanierService --> PanierServlet : RegleMetierException("Produit introuvable.")
+  else quantite <= 0
+    PanierService --> PanierServlet : RegleMetierException("Quantité invalide.")
+  else stock = 0 (RG06)
+    PanierService --> PanierServlet : RegleMetierException("Produit en rupture de stock.")
+  else panier.getQuantite(produitId) + quantite > stock (RG07)
+    PanierService --> PanierServlet : RegleMetierException("Quantité demandée supérieure au stock disponible.")
+  else ajout autorisé
+    PanierService -> Panier : ajouter(produit, quantite)
+    PanierService --> PanierServlet
+  end
+
+  alt RegleMetierException
+    PanierServlet --> Client : redirect /produit?id=produitId avec message d'erreur
+  else succès
+    PanierServlet --> Client : redirect /client/panier avec message de confirmation
+  end
+end
+
+note over Panier
+  Le stock est revérifié à la validation
+  de la commande (RG12), car il peut
+  changer entre-temps.
+end note
+@enduml

@@ -1,0 +1,58 @@
+@startuml cas-utilisation-client
+title Cas d'utilisation : Visiteur et Client
+left to right direction
+skinparam packageStyle rectangle
+
+actor Visiteur
+actor Client
+Client -|> Visiteur
+
+rectangle "Boutique en ligne" {
+  usecase "S'inscrire\n(BF01)" as UC01
+  usecase "Se connecter\n(BF02)" as UC02
+  usecase "Consulter le catalogue\n(BF05)" as UC05
+  usecase "Filtrer par catégorie\n(BF06)" as UC06
+  usecase "Rechercher par mot-clé\n(BF07)" as UC07
+  usecase "Consulter la fiche produit\n(BF08)" as UC08
+
+  usecase "Se déconnecter\n(BF03)" as UC03
+  usecase "Consulter et modifier\nson profil (BF04)" as UC04
+  usecase "Ajouter un produit\nau panier (BF09)" as UC09
+  usecase "Modifier la quantité\nd'une ligne (BF10)" as UC10
+  usecase "Retirer un produit,\nvider le panier (BF11)" as UC11
+  usecase "Consulter le panier\net son total (BF12)" as UC12
+  usecase "Passer une commande\n(BF13)" as UC13
+  usecase "Consulter l'historique\ndes commandes (BF14)" as UC14
+  usecase "Consulter le détail\nd'une commande (BF15)" as UC15
+  usecase "Annuler une commande\nen attente (BF16)" as UC16
+}
+
+Visiteur --> UC01
+Visiteur --> UC02
+Visiteur --> UC05
+Visiteur --> UC08
+
+UC05 <. UC06 : <<extend>>
+UC05 <. UC07 : <<extend>>
+
+Client --> UC03
+Client --> UC04
+Client --> UC09
+Client --> UC10
+Client --> UC11
+Client --> UC12
+Client --> UC13
+Client --> UC14
+
+UC09 ..> UC02 : <<include>>
+UC13 ..> UC02 : <<include>>
+UC14 ..> UC02 : <<include>>
+UC13 ..> UC12 : <<include>>
+UC14 <.. UC15 : <<extend>>
+UC15 <.. UC16 : <<extend>>
+
+
+legend bottom
+  RG08 : seul un client authentifié peut ajouter au panier et commander.
+endlegend
+@enduml
