@@ -230,3 +230,5 @@ docs/
   Régénérer les SVG : `plantuml -tsvg -charset UTF-8 docs/uml/*.puml`.
 - [Rapport](docs/rapport/rapport.md) : processus (modèle en Y), modèles UML, descriptions textuelles des cas
   d'utilisation, fonctionnalités, choix techniques.
+  Version PDF remise à l'encadrante : sources LaTeX dans [`docs/rapport/latex/`](docs/rapport/latex/),
+  compilées par `docs/rapport/latex/compiler.sh` en `docs/rapport/rapport.pdf`.

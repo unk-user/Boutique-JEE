@@ -8,3 +8,6 @@ target/
 .settings/
 .classpath
 .project
+
+# Compilation LaTeX du rapport
+docs/rapport/latex/build/
