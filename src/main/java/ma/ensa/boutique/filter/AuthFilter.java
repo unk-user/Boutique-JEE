@@ -5,7 +5,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -14,8 +13,7 @@ import ma.ensa.boutique.model.Utilisateur;
 
 import java.io.IOException;
 
-// BNF02, RG08 : l'espace client est réservé aux utilisateurs connectés avec le rôle CLIENT
-@WebFilter("/client/*")
+// BNF02, RG08 : l'espace client est réservé aux utilisateurs connectés avec le rôle CLIENT (déclaré dans web.xml, après EncodingFilter)
 public class AuthFilter implements Filter {
 
     @Override
