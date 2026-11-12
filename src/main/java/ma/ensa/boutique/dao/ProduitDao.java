@@ -34,7 +34,14 @@ public class ProduitDao extends GenericDao<Produit> {
     }
 
     public Produit trouverEtVerrouiller(Long id) {
-        return id == null ? null : session().get(Produit.class, id, LockMode.PESSIMISTIC_WRITE);
+        if (id == null) {
+            return null;
+        }
+        return session()
+                .createQuery("from Produit p where p.id = :id", Produit.class)
+                .setParameter("id", id)
+                .setHibernateLockMode(LockMode.PESSIMISTIC_WRITE)
+                .uniqueResult();
     }
 
     public List<Produit> rechercher(Long categorieId, String motCle, int debut, int taille) {
