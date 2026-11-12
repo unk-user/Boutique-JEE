@@ -803,24 +803,28 @@ Améliorations possibles, hors du périmètre actuel :
 
 ## 9. Annexes
 
-### 9.1 Captures d'écran à insérer
+### 9.1 Captures d'écran
 
-- [ ] Catalogue : liste paginée, filtre par catégorie, recherche
-- [ ] Fiche produit (visiteur, client, produit en rupture)
-- [ ] Inscription et connexion (avec un message d'erreur)
-- [ ] Panier avec plusieurs lignes et total
-- [ ] Page de validation de la commande, puis message de confirmation
-- [ ] Refus de commande pour stock insuffisant
-- [ ] Historique « Mes commandes » et détail d'une commande, bouton d'annulation
-- [ ] Profil du client
-- [ ] Tableau de bord de l'administrateur
-- [ ] Back-office : liste des catégories, formulaire produit, liste des produits (stock, produit inactif)
-- [ ] Back-office : liste des commandes filtrée, changement de statut
+Les captures figurent dans l'annexe A de la version PDF ; les fichiers PNG sont dans
+`docs/rapport/latex/captures/`. Elles ont été prises sur l'application déployée en local avec un jeu de
+données de démonstration.
+
+- [x] Catalogue : liste paginée, filtre par catégorie, recherche
+- [x] Fiche produit (client, visiteur sur un produit en rupture)
+- [x] Inscription et connexion (avec un message d'erreur)
+- [x] Panier avec plusieurs lignes et total
+- [x] Page de validation de la commande, puis message de confirmation
+- [x] Refus de commande pour stock insuffisant
+- [x] Historique « Mes commandes » et détail d'une commande, bouton d'annulation
+- [x] Profil du client
+- [x] Tableau de bord de l'administrateur
+- [x] Back-office : liste des catégories, formulaire produit, liste des produits
+- [x] Back-office : liste des commandes filtrée, changement de statut, détail
 - [ ] Back-office : liste des utilisateurs
-- [ ] Page d'erreur (403 ou 404)
-- [ ] Affichage mobile (barre de navigation repliée)
-- [ ] Tables générées dans MySQL
-- [ ] Historique Git et pull requests sur GitHub
+- [x] Pages d'erreur 403 et 404
+- [x] Affichage mobile (barre de navigation repliée et dépliée)
+- [x] Tables générées dans MySQL (sortie du client `mysql`)
+- [x] Pull requests et historique des commits sur GitHub
 
 ### 9.2 Références
 
