@@ -4,12 +4,15 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "commande")
 public class Commande {
+
+    private static final DateTimeFormatter FORMAT_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,6 +57,10 @@ public class Commande {
 
     public LocalDateTime getDateCommande() { return dateCommande; }
     public void setDateCommande(LocalDateTime dateCommande) { this.dateCommande = dateCommande; }
+
+    public String getDateCommandeFormatee() {
+        return dateCommande == null ? "" : dateCommande.format(FORMAT_DATE);
+    }
 
     public StatutCommande getStatut() { return statut; }
     public void setStatut(StatutCommande statut) { this.statut = statut; }

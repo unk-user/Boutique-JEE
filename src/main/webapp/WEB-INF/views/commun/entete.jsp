@@ -24,6 +24,10 @@
                     <li class="nav-item"><a class="nav-link" href="${ctx}/admin/tableau-de-bord">Tableau de bord</a></li>
                     <li class="nav-item"><a class="nav-link" href="${ctx}/admin/categories">Catégories</a></li>
                     <li class="nav-item"><a class="nav-link" href="${ctx}/admin/produits">Produits</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/commandes">Commandes</a></li>
+                </c:if>
+                <c:if test="${sessionScope.utilisateur.role == 'CLIENT'}">
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/client/commandes">Mes commandes</a></li>
                 </c:if>
             </ul>
             <c:choose>
