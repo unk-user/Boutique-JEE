@@ -2,6 +2,7 @@ package ma.ensa.boutique.dao;
 
 import ma.ensa.boutique.model.Produit;
 
+import org.hibernate.LockMode;
 import org.hibernate.query.Query;
 
 import java.util.List;
@@ -30,6 +31,17 @@ public class ProduitDao extends GenericDao<Produit> {
                 .setParameter("id", produitId)
                 .uniqueResult();
         return nombre > 0;
+    }
+
+    public Produit trouverEtVerrouiller(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return session()
+                .createQuery("from Produit p where p.id = :id", Produit.class)
+                .setParameter("id", id)
+                .setHibernateLockMode(LockMode.PESSIMISTIC_WRITE)
+                .uniqueResult();
     }
 
     public List<Produit> rechercher(Long categorieId, String motCle, int debut, int taille) {

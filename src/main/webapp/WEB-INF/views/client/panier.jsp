@@ -74,7 +74,7 @@
                 <input type="hidden" name="action" value="vider">
                 <button type="submit" class="btn btn-outline-danger">Vider le panier</button>
             </form>
-            <button type="button" class="btn btn-success ms-md-auto" disabled>Passer la commande</button>
+            <a class="btn btn-success ms-md-auto" href="${ctx}/client/commandes?action=valider">Passer la commande</a>
         </div>
     </c:otherwise>
 </c:choose>

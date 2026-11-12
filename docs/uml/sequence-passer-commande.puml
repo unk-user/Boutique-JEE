@@ -4,7 +4,7 @@ autonumber
 hide footbox
 
 actor Client
-boundary "panier.jsp" as Vue
+boundary "commande-validation.jsp" as Vue
 participant AuthFilter
 control CommandeServlet
 participant CommandeService
@@ -13,7 +13,12 @@ participant ProduitDao
 participant CommandeDao
 participant "Session Hibernate" as Session
 
-Client -> Vue : saisit l'adresse de livraison et valide
+note over Client, Vue
+  Depuis panier.jsp, « Passer la commande » ouvre
+  GET /client/commandes?action=valider : récapitulatif du panier
+  et adresse de livraison (préremplie avec l'adresse du client)
+end note
+Client -> Vue : saisit l'adresse de livraison et confirme
 Vue -> AuthFilter : POST /client/commandes (adresseLivraison)
 AuthFilter -> AuthFilter : utilisateur en session avec role CLIENT ?
 alt non connecté
@@ -25,18 +30,24 @@ else role = CLIENT
   CommandeServlet -> CommandeServlet : panier = session.getAttribute("panier")
   CommandeServlet -> CommandeService : passerCommande(utilisateurId, panier, adresseLivraison)
 
-  alt panier vide (RG09)
+  alt panier absent ou vide (RG09)
     CommandeService --> CommandeServlet : RegleMetierException("Votre panier est vide.")
+  else adresse vide ou trop longue
+    CommandeService --> CommandeServlet : RegleMetierException("L'adresse de livraison est obligatoire.")
   else panier non vide
     CommandeService -> Session : beginTransaction()
     CommandeService -> UtilisateurDao : trouverParId(utilisateurId)
     UtilisateurDao --> CommandeService : utilisateur
     CommandeService -> CommandeService : commande = new Commande(utilisateur, adresseLivraison, EN_ATTENTE)
 
-    loop pour chaque LignePanier
-      CommandeService -> ProduitDao : trouverParId(produitId)
+    loop pour chaque LignePanier, par id de produit croissant
+      CommandeService -> ProduitDao : trouverEtVerrouiller(produitId)
+      note right : select ... for update :\nle produit est rechargé (prix, stock, actif)\net verrouillé jusqu'au commit
       ProduitDao --> CommandeService : produit
-      alt produit inactif ou stock < quantite
+      alt produit supprimé ou inactif (RG15)
+        CommandeService -> Session : rollback()
+        CommandeService --> CommandeServlet : RegleMetierException("Le produit « nom » n'est plus disponible.")
+      else stock < quantite (RG12)
         CommandeService -> Session : rollback()
         CommandeService --> CommandeServlet : RegleMetierException("Stock insuffisant pour « nom ».")
       else stock suffisant
@@ -55,7 +66,7 @@ else role = CLIENT
   end
 
   alt RegleMetierException
-    CommandeServlet --> Client : redirect /client/panier avec message d'erreur (panier conservé)
+    CommandeServlet --> Client : forward commande-validation.jsp avec message d'erreur (panier conservé)
   else succès
     CommandeServlet -> CommandeServlet : panier.vider()
     CommandeServlet --> Client : redirect /client/commandes avec message de confirmation
