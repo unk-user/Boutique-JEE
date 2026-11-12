@@ -820,7 +820,7 @@ données de démonstration.
 - [x] Tableau de bord de l'administrateur
 - [x] Back-office : liste des catégories, formulaire produit, liste des produits
 - [x] Back-office : liste des commandes filtrée, changement de statut, détail
-- [ ] Back-office : liste des utilisateurs
+- [x] Back-office : liste des utilisateurs
 - [x] Pages d'erreur 403 et 404
 - [x] Affichage mobile (barre de navigation repliée et dépliée)
 - [x] Tables générées dans MySQL (sortie du client `mysql`)
