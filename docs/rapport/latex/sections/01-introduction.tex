@@ -1,0 +1,49 @@
+\chapter{Introduction et contexte}
+
+\section{Contexte}
+
+Une petite boutique qui gère ses produits et ses commandes à la main (fichiers Excel, échanges
+téléphoniques) s'expose à des erreurs de stock, à une mauvaise traçabilité des commandes et à une
+visibilité limitée auprès de ses clients. Le projet consiste à lui fournir une application web de vente en
+ligne : un catalogue public, un espace client (panier, commandes, historique, profil) et un back-office
+d'administration.
+
+\section{Problématique}
+
+Comment offrir à une boutique un outil web simple permettant de publier un catalogue organisé par
+catégories, de recevoir des commandes en ligne et d'en suivre le traitement, tout en garantissant la
+cohérence des données (stock, prix, historique) ?
+
+\section{Objectifs}
+
+\begin{enumerate}
+  \item Permettre aux visiteurs de consulter le catalogue et de rechercher des produits.
+  \item Permettre aux clients authentifiés de gérer un panier et de passer des commandes.
+  \item Permettre à l'administrateur de gérer les catégories, les produits, les commandes et les utilisateurs.
+  \item Concevoir le système avec UML avant son implémentation.
+  \item Mettre en œuvre une architecture MVC en Jakarta EE (Servlets, JSP, JSTL) avec Hibernate pour la persistance.
+  \item Versionner le travail avec Git et GitHub (tickets, branches, pull requests).
+\end{enumerate}
+
+\section{Périmètre}
+
+Le périmètre est celui du cahier des charges (§1.4). Sont \textbf{hors périmètre} : le paiement en ligne réel
+(le paiement est simulé, à la livraison), la livraison et le suivi transporteur, la gestion multi-boutiques,
+l'application mobile et l'envoi d'e-mails transactionnels.
+
+\section{Acteurs}
+
+\begin{table}[H]
+  \centering\small
+  \caption{Acteurs du système}
+  \begin{tabularx}{\linewidth}{P{2.4cm}LL}
+    \ligneentete
+    \entete{Acteur} & \entete{Description} & \entete{Accès} \\
+    Visiteur & Internaute non authentifié & Catalogue, recherche, fiche produit, inscription, connexion \\
+    \midrule
+    Client & Utilisateur connecté avec le rôle CLIENT ; hérite des droits du Visiteur & Panier, commandes, historique, profil \\
+    \midrule
+    Administrateur & Utilisateur connecté avec le rôle ADMIN & Back-office : catégories, produits, stock, commandes, utilisateurs, tableau de bord \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

@@ -1,0 +1,102 @@
+\chapter{Fonctionnalités réalisées}
+
+\section{Besoins fonctionnels}
+
+Tous les besoins sont réalisés, y compris les besoins P3 (BF04, BF16, BF23).
+
+{\small
+\begin{xltabular}{\linewidth}{P{1.1cm}P{3.6cm}ccL}
+  \caption{Besoins fonctionnels et leur réalisation}\label{tab:bf}\\
+  \ligneentete
+  \entete{Code} & \entete{Besoin} & \entete{Prio.} & \entete{État} & \entete{Réalisation} \\
+  \endfirsthead
+  \ligneentete
+  \entete{Code} & \entete{Besoin} & \entete{Prio.} & \entete{État} & \entete{Réalisation} \\
+  \endhead
+  \bottomrule
+  \endfoot
+  BF01 & S'inscrire & P1 & Réalisé & \code{InscriptionServlet}, \code{AuthService.inscrire} \\
+  BF02 & Se connecter & P1 & Réalisé & \code{ConnexionServlet}, \code{AuthService.authentifier} \\
+  BF03 & Se déconnecter & P1 & Réalisé & \code{DeconnexionServlet} (POST, invalidation de la session) \\
+  BF04 & Consulter et modifier son profil & P3 & Réalisé & \code{ProfilServlet}, \code{AuthService.modifierProfil}, \code{changerMotDePasse} \\
+  BF05 & Liste des produits disponibles & P1 & Réalisé & \code{CatalogueServlet}, \code{CatalogueService.listerProduits} (paginée) \\
+  BF06 & Filtrer par catégorie & P1 & Réalisé & Paramètre \code{categorie} du catalogue \\
+  BF07 & Rechercher par mot-clé & P2 & Réalisé & Paramètre \code{motCle} (nom et description, insensible à la casse) \\
+  BF08 & Fiche détaillée d'un produit & P1 & Réalisé & \code{ProduitServlet}, \code{CatalogueService.trouverProduitActif} \\
+  BF09 & Ajouter au panier & P1 & Réalisé & \code{PanierServlet}, \code{PanierService.ajouter} \\
+  BF10 & Modifier la quantité & P1 & Réalisé & \code{PanierService.modifierQuantite} \\
+  BF11 & Retirer un produit, vider le panier & P1 & Réalisé & \code{PanierService.retirer}, \code{vider} \\
+  BF12 & Consulter le panier et son total & P1 & Réalisé & \code{client/panier.jsp}, \code{Panier.getTotal} \\
+  BF13 & Passer une commande & P1 & Réalisé & \code{CommandeServlet}, \code{CommandeService.passerCommande} \\
+  BF14 & Historique des commandes & P1 & Réalisé & \code{CommandeService.listerCommandesClient} (paginé) \\
+  BF15 & Détail d'une commande & P2 & Réalisé & \code{CommandeService.trouverCommandeClient} \\
+  BF16 & Annuler une commande « En attente » & P3 & Réalisé & \code{CommandeService.annulerCommandeClient} \\
+  BF17 & CRUD des catégories & P1 & Réalisé & \code{AdminCategorieServlet}, \code{CatalogueService} \\
+  BF18 & CRUD des produits & P1 & Réalisé & \code{AdminProduitServlet}, \code{CatalogueService} \\
+  BF19 & Gérer le stock & P1 & Réalisé & \code{CatalogueService.modifierStock} \\
+  BF20 & Consulter et filtrer les commandes & P1 & Réalisé & \code{AdminCommandeServlet}, \code{CommandeService.listerCommandes} \\
+  BF21 & Changer le statut d'une commande & P1 & Réalisé & \code{CommandeService.changerStatut} \\
+  BF22 & Utilisateurs, activer ou désactiver & P2 & Réalisé & \code{AdminUtilisateurServlet}, \code{AuthService.changerEtatCompte} \\
+  BF23 & Tableau de bord & P3 & Réalisé & \code{TableauDeBordServlet} \\
+\end{xltabular}
+}
+
+\section{Règles de gestion}
+
+{\small
+\begin{xltabular}{\linewidth}{P{1.2cm}L}
+  \caption{Mise en œuvre des règles de gestion}\label{tab:rg}\\
+  \ligneentete
+  \entete{Code} & \entete{Mise en œuvre} \\
+  \endfirsthead
+  \ligneentete
+  \entete{Code} & \entete{Mise en œuvre} \\
+  \endhead
+  \bottomrule
+  \endfoot
+  RG01 & \code{AuthService} : recherche par e-mail avant l'inscription et la modification du profil ; contrainte d'unicité en base. \\
+  RG02 & \code{AuthService.inscrire} force le rôle CLIENT ; le premier ADMIN est créé par \code{docs/sql/admin.sql}. \\
+  RG03 & \code{CatalogueService.enregistrerProduit} exige une catégorie existante ; \code{@ManyToOne(optional = false)}. \\
+  RG04 & \code{CatalogueService.supprimerCategorie} refuse si \code{CategorieDao.compterProduits} > 0 (produits inactifs compris). \\
+  RG05 & \code{CatalogueService} : prix > 0 après arrondi au centime, stock ≥ 0 ; colonnes \code{DECIMAL(10,2)}. \\
+  RG06 & Produit à stock 0 affiché avec le badge « Rupture » ; refusé par \code{PanierService}. \\
+  RG07 & \code{PanierService} : quantité au panier + quantité demandée ≤ stock. \\
+  RG08 & \code{AuthFilter} sur \code{/client/*} (panier et commandes) : rôle CLIENT obligatoire. \\
+  RG09 & \code{CommandeService.passerCommande} refuse un panier vide. \\
+  RG10 & Le prix du produit relu en base est copié dans \code{LigneCommande.prixUnitaire}. \\
+  RG11 & Total calculé par le service à partir des lignes. \\
+  RG12 & Décrément du stock et enregistrement dans une transaction ; rollback au premier stock insuffisant. \\
+  RG13 & \code{CommandeService.statutsSuivants} : seules les transitions du cycle sont acceptées et proposées. \\
+  RG14 & Réintégration des quantités à l'annulation (\code{ProduitDao.reintegrerStock}), même transaction. \\
+  RG15 & \code{CatalogueService.supprimerProduit} désactive un produit déjà commandé ; le catalogue filtre \code{actif = true}. \\
+  RG16 & \code{CommandeService.trouverCommandeClient} et \code{annulerCommandeClient} vérifient le propriétaire. \\
+\end{xltabular}
+}
+
+\section{Besoins non fonctionnels}
+
+{\small
+\begin{xltabular}{\linewidth}{P{1.3cm}L}
+  \caption{Mise en œuvre des besoins non fonctionnels}\label{tab:bnf}\\
+  \ligneentete
+  \entete{Code} & \entete{Mise en œuvre} \\
+  \endfirsthead
+  \ligneentete
+  \entete{Code} & \entete{Mise en œuvre} \\
+  \endhead
+  \bottomrule
+  \endfoot
+  BNF01 & Mots de passe hachés avec jBCrypt (\code{BCrypt.hashpw}, \code{checkpw}). \\
+  BNF02 & \code{AuthFilter} (\code{/client/*}, rôle CLIENT) et \code{AdminFilter} (\code{/admin/*}, rôle ADMIN). \\
+  BNF03 & HQL à paramètres nommés uniquement ; affichage des données par \code{<c:out>}. \\
+  BNF04 & Session invalidée à la déconnexion ; \code{session-timeout} de 30 minutes dans \code{web.xml}. \\
+  BNF05 & Passage de commande et changement de statut dans une seule transaction Hibernate. \\
+  BNF06 & Couches contrôleur, service, DAO, modèle ; aucun scriptlet dans les JSP. \\
+  BNF07 & Messages de confirmation et d'erreur en français, contrôles HTML5 alignés sur le serveur, pages d'erreur 400, 403, 404, 405, 500. \\
+  BNF08 & Bootstrap 5 : grille, tableaux \code{table-responsive}, barre de navigation repliable. \\
+  BNF09 & Base \code{utf8mb4}, \code{EncodingFilter}, JSP en UTF-8 (\code{web.xml}), connexion JDBC en UTF-8. \\
+  BNF10 & Pagination par 10 : catalogue, produits, commandes (client et administrateur), utilisateurs. \\
+  BNF11 & Archive \code{boutique.war} déployée sur Tomcat 10.1 (Jakarta EE 10, espace de noms \code{jakarta.*}). \\
+  BNF12 & Dépôt GitHub, une branche par fonctionnalité, fusion par pull request (tableau~\ref{tab:iterations}). \\
+\end{xltabular}
+}
