@@ -6,6 +6,11 @@
 
     <display-name>Boutique en ligne</display-name>
 
+    <context-param>
+        <param-name>jakarta.servlet.jsp.jstl.fmt.locale</param-name>
+        <param-value>fr_FR</param-value>
+    </context-param>
+
     <session-config>
         <session-timeout>30</session-timeout>
         <tracking-mode>COOKIE</tracking-mode>

@@ -30,7 +30,7 @@ public abstract class GenericDao<T> {
     }
 
     public T trouverParId(Long id) {
-        return session().get(classe, id);
+        return id == null ? null : session().get(classe, id);
     }
 
     public List<T> listerTous() {
