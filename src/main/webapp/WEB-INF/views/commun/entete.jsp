@@ -48,3 +48,12 @@
     <c:if test="${not empty erreur}">
         <div class="alert alert-danger" role="alert"><c:out value="${erreur}"/></div>
     </c:if>
+    <%-- Messages flash : déposés en session avant une redirection, affichés une seule fois --%>
+    <c:if test="${not empty sessionScope.flashSucces}">
+        <div class="alert alert-success" role="alert"><c:out value="${sessionScope.flashSucces}"/></div>
+        <c:remove var="flashSucces" scope="session"/>
+    </c:if>
+    <c:if test="${not empty sessionScope.flashErreur}">
+        <div class="alert alert-danger" role="alert"><c:out value="${sessionScope.flashErreur}"/></div>
+        <c:remove var="flashErreur" scope="session"/>
+    </c:if>
