@@ -49,13 +49,24 @@
             <p style="white-space: pre-line"><c:out value="${produit.description}"/></p>
         </c:if>
 
-        <%-- Emplacement du formulaire « Ajouter au panier » (étape 6, BF09) --%>
+        <%-- BF09 : ajout au panier, réservé au client (RG08) --%>
         <c:choose>
             <c:when test="${empty sessionScope.utilisateur}">
                 <a class="btn btn-primary" href="${ctx}/connexion">Connectez-vous pour commander</a>
             </c:when>
             <c:when test="${sessionScope.utilisateur.role == 'CLIENT' and produit.stock > 0}">
-                <%-- formulaire d'ajout au panier à brancher ici --%>
+                <form method="post" action="${ctx}/client/panier" class="row g-2 align-items-end">
+                    <input type="hidden" name="action" value="ajouter">
+                    <input type="hidden" name="produitId" value="${produit.id}">
+                    <div class="col-auto">
+                        <label for="quantite" class="form-label mb-1">Quantité</label>
+                        <input type="number" id="quantite" name="quantite" value="1" min="1" max="${produit.stock}"
+                               required class="form-control" style="width: 6rem">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">Ajouter au panier</button>
+                    </div>
+                </form>
             </c:when>
         </c:choose>
     </div>

@@ -32,6 +32,14 @@
                     <a class="btn btn-light btn-sm" href="${ctx}/inscription">Inscription</a>
                 </c:when>
                 <c:otherwise>
+                    <c:if test="${sessionScope.utilisateur.role == 'CLIENT'}">
+                        <a class="btn btn-outline-light btn-sm me-2" href="${ctx}/client/panier">
+                            Panier
+                            <span class="badge text-bg-light">
+                                <c:out value="${empty sessionScope.panier ? 0 : sessionScope.panier.lignes.size()}"/>
+                            </span>
+                        </a>
+                    </c:if>
                     <span class="navbar-text me-3">
                         <c:out value="${sessionScope.utilisateur.prenom} ${sessionScope.utilisateur.nom}"/>
                     </span>
