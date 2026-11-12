@@ -21,7 +21,9 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="${ctx}/catalogue">Catalogue</a></li>
                 <c:if test="${sessionScope.utilisateur.role == 'ADMIN'}">
-                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/tableau-de-bord">Administration</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/tableau-de-bord">Tableau de bord</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/categories">Catégories</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/produits">Produits</a></li>
                 </c:if>
             </ul>
             <c:choose>
