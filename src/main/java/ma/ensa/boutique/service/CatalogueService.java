@@ -21,6 +21,22 @@ public class CatalogueService {
     private final CategorieDao categorieDao = new CategorieDao();
     private final ProduitDao produitDao = new ProduitDao();
 
+    // RG15
+    public List<Produit> listerProduits(Long categorieId, String motCle, int page) {
+        String mot = nettoyer(motCle);
+        return enTransaction(() -> produitDao.rechercher(categorieId, mot, debut(page), TAILLE_PAGE));
+    }
+
+    public long compterProduits(Long categorieId, String motCle) {
+        String mot = nettoyer(motCle);
+        return enTransaction(() -> produitDao.compterRecherche(categorieId, mot));
+    }
+
+    // RG15
+    public Produit trouverProduitActif(Long id) {
+        return enTransaction(() -> produitDao.trouverActifParId(id));
+    }
+
     public List<Categorie> listerCategories() {
         return enTransaction(categorieDao::listerTous);
     }
