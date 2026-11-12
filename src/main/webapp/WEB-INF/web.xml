@@ -6,6 +6,12 @@
 
     <display-name>Boutique en ligne</display-name>
 
+    <!-- Format français des nombres et des dates pour la bibliothèque fmt de JSTL -->
+    <context-param>
+        <param-name>jakarta.servlet.jsp.jstl.fmt.locale</param-name>
+        <param-value>fr_FR</param-value>
+    </context-param>
+
     <!-- BNF04 : expiration de la session après 30 minutes d'inactivité -->
     <session-config>
         <session-timeout>30</session-timeout>
