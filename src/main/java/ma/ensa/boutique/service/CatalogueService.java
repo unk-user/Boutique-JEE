@@ -170,6 +170,11 @@ public class CatalogueService {
         });
     }
 
+    // BF23
+    public List<Produit> listerProduitsEnRupture() {
+        return enTransaction(produitDao::listerEnRupture);
+    }
+
     // ---------- Outils ----------
 
     private void verifierProduit(Produit produit) {

@@ -113,6 +113,24 @@ public class CommandeService {
         return commande;
     }
 
+    // BF16 : le client n'annule que sa commande encore « En attente » (plus strict que RG13 côté administrateur)
+    public void annulerCommandeClient(Long commandeId, Long utilisateurId) {
+        enTransaction(() -> {
+            // Même verrou que changerStatut : une seule annulation à la fois, le stock n'est réintégré qu'une fois
+            Commande commande = commandeDao.trouverEtVerrouiller(commandeId);
+            // RG16 : la commande d'un autre client est traitée comme une commande inexistante
+            if (commande == null || !commande.getUtilisateur().getId().equals(utilisateurId)) {
+                throw new RegleMetierException("Commande introuvable.");
+            }
+            if (commande.getStatut() != StatutCommande.EN_ATTENTE) {
+                throw new RegleMetierException("Seule une commande « En attente » peut être annulée.");
+            }
+            // RG13, RG14 : transition et réintégration du stock
+            appliquerStatut(commande, StatutCommande.ANNULEE);
+            return null;
+        });
+    }
+
     // ---------- Back-office (BF20, BF21) ----------
 
     // statut null : toutes les commandes
@@ -188,6 +206,11 @@ public class CommandeService {
             }
         }
         commande.setStatut(nouveauStatut);
+    }
+
+    // BF23 : chiffre d'affaires = total des commandes qui ne sont pas annulées
+    public BigDecimal calculerChiffreAffaires() {
+        return enTransaction(commandeDao::calculerChiffreAffaires);
     }
 
     private int debut(int page) {

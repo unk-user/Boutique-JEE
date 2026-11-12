@@ -16,7 +16,7 @@ import ma.ensa.boutique.util.Parametres;
 import java.io.IOException;
 import java.util.Locale;
 
-// BF13 (passage), BF14 (historique), BF15 (détail) : sous /client/*, donc réservé au client authentifié par AuthFilter (RG08)
+// BF13 (passage), BF14 (historique), BF15 (détail), BF16 (annulation) : sous /client/*, donc réservé au client authentifié par AuthFilter (RG08)
 @WebServlet("/client/commandes")
 public class CommandeServlet extends HttpServlet {
 
@@ -61,6 +61,10 @@ public class CommandeServlet extends HttpServlet {
             throws ServletException, IOException {
         HttpSession session = requete.getSession();
         Utilisateur utilisateur = (Utilisateur) session.getAttribute("utilisateur");
+        if ("annuler".equals(requete.getParameter("action"))) {
+            annuler(requete, reponse, utilisateur);
+            return;
+        }
         Panier panier = (Panier) session.getAttribute("panier");
         String adresseLivraison = requete.getParameter("adresseLivraison");
 
@@ -76,6 +80,22 @@ public class CommandeServlet extends HttpServlet {
             requete.setAttribute("erreur", e.getMessage());
             afficherValidation(requete, reponse, adresseLivraison);
         }
+    }
+
+    // BF16 : le service vérifie le propriétaire (RG16) et le statut
+    private void annuler(HttpServletRequest requete, HttpServletResponse reponse, Utilisateur utilisateur)
+            throws IOException {
+        HttpSession session = requete.getSession();
+        Long id = Parametres.lireLong(requete.getParameter("commandeId"));
+        String cible = "/client/commandes";
+        try {
+            commandeService.annulerCommandeClient(id, utilisateur.getId());
+            session.setAttribute("flashSucces", "Votre commande n° " + id + " a été annulée.");
+            cible += "?id=" + id;
+        } catch (RegleMetierException e) {
+            session.setAttribute("flashErreur", e.getMessage());
+        }
+        reponse.sendRedirect(requete.getContextPath() + cible);
     }
 
     private void afficherValidation(HttpServletRequest requete, HttpServletResponse reponse, String adresse)

@@ -26,6 +26,13 @@ public class ProduitDao extends GenericDao<Produit> {
         return session().createQuery("select count(p) from Produit p", Long.class).uniqueResult();
     }
 
+    // BF23 : produits actifs dont le stock est à 0
+    public List<Produit> listerEnRupture() {
+        return session()
+                .createQuery("from Produit p where p.actif = true and p.stock = 0 order by p.nom", Produit.class)
+                .getResultList();
+    }
+
     public boolean estCommande(Long produitId) {
         Long nombre = session()
                 .createQuery("select count(l) from LigneCommande l where l.produit.id = :id", Long.class)
