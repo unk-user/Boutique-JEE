@@ -2,6 +2,8 @@ package ma.ensa.boutique.dao;
 
 import ma.ensa.boutique.model.Produit;
 
+import org.hibernate.query.Query;
+
 import java.util.List;
 
 public class ProduitDao extends GenericDao<Produit> {
@@ -29,5 +31,54 @@ public class ProduitDao extends GenericDao<Produit> {
                 .setParameter("id", produitId)
                 .uniqueResult();
         return nombre > 0;
+    }
+
+    // ---------- Catalogue public : produits actifs uniquement (RG15) ----------
+
+    // categorieId et motCle sont facultatifs (null = pas de filtre) ; la recherche ignore la casse
+    public List<Produit> rechercher(Long categorieId, String motCle, int debut, int taille) {
+        Query<Produit> requete = session().createQuery(
+                "from Produit p" + conditions(categorieId, motCle) + " order by p.dateCreation desc, p.id desc",
+                Produit.class);
+        parametrer(requete, categorieId, motCle);
+        return requete.setFirstResult(debut).setMaxResults(taille).getResultList();
+    }
+
+    public long compterRecherche(Long categorieId, String motCle) {
+        Query<Long> requete = session().createQuery(
+                "select count(p) from Produit p" + conditions(categorieId, motCle), Long.class);
+        parametrer(requete, categorieId, motCle);
+        return requete.uniqueResult();
+    }
+
+    public Produit trouverActifParId(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return session()
+                .createQuery("from Produit p where p.id = :id and p.actif = true", Produit.class)
+                .setParameter("id", id)
+                .uniqueResult();
+    }
+
+    // La clause where n'est construite qu'avec des paramètres nommés : jamais de valeur concaténée
+    private String conditions(Long categorieId, String motCle) {
+        StringBuilder hql = new StringBuilder(" where p.actif = true");
+        if (categorieId != null) {
+            hql.append(" and p.categorie.id = :categorieId");
+        }
+        if (motCle != null) {
+            hql.append(" and (lower(p.nom) like :motCle or lower(p.description) like :motCle)");
+        }
+        return hql.toString();
+    }
+
+    private void parametrer(Query<?> requete, Long categorieId, String motCle) {
+        if (categorieId != null) {
+            requete.setParameter("categorieId", categorieId);
+        }
+        if (motCle != null) {
+            requete.setParameter("motCle", "%" + motCle.toLowerCase() + "%");
+        }
     }
 }
