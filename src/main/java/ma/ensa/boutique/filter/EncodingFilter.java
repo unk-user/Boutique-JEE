@@ -5,12 +5,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 
 import java.io.IOException;
 
-// BNF09 : UTF-8 de bout en bout (doit s'appliquer avant toute lecture des paramètres)
-@WebFilter("/*")
+// BNF09 : UTF-8 de bout en bout. Déclaré en premier dans web.xml : il doit s'appliquer avant toute lecture des paramètres
 public class EncodingFilter implements Filter {
 
     @Override

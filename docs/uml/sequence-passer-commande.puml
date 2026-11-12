@@ -37,8 +37,16 @@ else role = CLIENT
   else panier non vide
     CommandeService -> Session : beginTransaction()
     CommandeService -> UtilisateurDao : trouverParId(utilisateurId)
-    UtilisateurDao --> CommandeService : utilisateur
-    CommandeService -> CommandeService : commande = new Commande(utilisateur, adresseLivraison, EN_ATTENTE)
+    UtilisateurDao --> CommandeService : utilisateur ou null
+    alt utilisateur introuvable
+      CommandeService -> Session : rollback()
+      CommandeService --> CommandeServlet : RegleMetierException("Utilisateur introuvable.")
+    else compte désactivé depuis la connexion (BF22)
+      CommandeService -> Session : rollback()
+      CommandeService --> CommandeServlet : RegleMetierException("Votre compte est désactivé : vous ne pouvez plus commander.")
+    else utilisateur actif
+      CommandeService -> CommandeService : commande = new Commande(utilisateur, adresseLivraison, EN_ATTENTE)
+    end
 
     loop pour chaque LignePanier, par id de produit croissant
       CommandeService -> ProduitDao : trouverEtVerrouiller(produitId)

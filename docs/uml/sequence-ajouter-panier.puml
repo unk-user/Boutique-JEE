@@ -24,8 +24,8 @@ else role = CLIENT
   PanierServlet -> PanierServlet : panier = session.getAttribute("panier")\n(créé et stocké en session s'il est absent)
   PanierServlet -> PanierService : ajouter(panier, produitId, quantite)
   PanierService -> Session : beginTransaction()
-  PanierService -> ProduitDao : trouverParId(produitId)
-  ProduitDao --> PanierService : produit
+  PanierService -> ProduitDao : trouverActifParId(produitId) (RG15)
+  ProduitDao --> PanierService : produit actif ou null
   PanierService -> Session : commit()
 
   alt produit absent ou inactif
