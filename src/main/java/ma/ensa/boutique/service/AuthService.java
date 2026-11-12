@@ -18,7 +18,11 @@ public class AuthService {
 
     public Utilisateur inscrire(Utilisateur utilisateur, String motDePasse) {
         verifierChamps(utilisateur, motDePasse);
+        utilisateur.setNom(utilisateur.getNom().trim());
+        utilisateur.setPrenom(utilisateur.getPrenom().trim());
         utilisateur.setEmail(utilisateur.getEmail().trim().toLowerCase());
+        utilisateur.setAdresse(nettoyer(utilisateur.getAdresse()));
+        utilisateur.setTelephone(nettoyer(utilisateur.getTelephone()));
 
         Session session = HibernateUtil.getSessionFactory().getCurrentSession();
         session.beginTransaction();
@@ -75,6 +79,19 @@ public class AuthService {
             throw new RegleMetierException("Le mot de passe doit contenir au moins "
                     + LONGUEUR_MIN_MOT_DE_PASSE + " caractères.");
         }
+        if (depasse(utilisateur.getNom(), 100) || depasse(utilisateur.getPrenom(), 100)
+                || depasse(utilisateur.getEmail(), 150) || depasse(utilisateur.getAdresse(), 255)
+                || depasse(utilisateur.getTelephone(), 20)) {
+            throw new RegleMetierException("Un des champs saisis est trop long.");
+        }
+    }
+
+    private boolean depasse(String valeur, int longueurMax) {
+        return valeur != null && valeur.trim().length() > longueurMax;
+    }
+
+    private String nettoyer(String valeur) {
+        return estVide(valeur) ? null : valeur.trim();
     }
 
     private boolean estVide(String valeur) {
