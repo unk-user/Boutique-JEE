@@ -7,6 +7,7 @@ actor Visiteur
 boundary "connexion.jsp" as Vue
 participant EncodingFilter
 control ConnexionServlet
+control DeconnexionServlet
 participant AuthService
 participant UtilisateurDao
 participant "Session Hibernate" as Session
@@ -16,6 +17,10 @@ Visiteur -> Vue : saisit e-mail et mot de passe
 Vue -> EncodingFilter : POST /connexion (email, motDePasse)
 EncodingFilter -> ConnexionServlet : doPost(req, rep)
 ConnexionServlet -> AuthService : authentifier(email, motDePasse)
+note right of AuthService
+  Champ vide : RegleMetierException("Veuillez saisir votre
+  e-mail et votre mot de passe.") avant tout accès à la base
+end note
 AuthService -> Session : beginTransaction()
 AuthService -> UtilisateurDao : trouverParEmail(email)
 UtilisateurDao -> Session : createQuery("from Utilisateur u where u.email = :email")
@@ -35,7 +40,8 @@ else compte désactivé (actif = faux)
   Vue --> Visiteur : formulaire et message
 else identifiants valides
   AuthService --> ConnexionServlet : utilisateur
-  ConnexionServlet -> ConnexionServlet : session.setAttribute("utilisateur", utilisateur)
+  ConnexionServlet -> ConnexionServlet : session.invalidate()\n(l'ancienne session est détruite : anti-fixation)
+  ConnexionServlet -> ConnexionServlet : nouvelle session = getSession(true)\nsession.setAttribute("utilisateur", utilisateur)
   alt role = ADMIN
     ConnexionServlet --> Visiteur : redirect /admin/tableau-de-bord
   else role = CLIENT
@@ -43,9 +49,12 @@ else identifiants valides
   end
 end
 
+Visiteur -> DeconnexionServlet : clique sur « Déconnexion » : POST /deconnexion\n(POST uniquement, un GET renvoie l'erreur 405)
+DeconnexionServlet -> DeconnexionServlet : session.invalidate()
+DeconnexionServlet --> Visiteur : redirect /connexion?deconnecte
+
 note over ConnexionServlet
   BNF04 : expiration de la session après
-  30 minutes d'inactivité (web.xml) ;
-  /deconnexion appelle session.invalidate()
+  30 minutes d'inactivité (web.xml)
 end note
 @enduml
