@@ -898,7 +898,6 @@ données de démonstration.
 - [x] Pages d'erreur 403 et 404
 - [x] Affichage mobile (barre de navigation repliée et dépliée)
 - [x] Tables générées dans MySQL (sortie du client `mysql`)
-- [x] Pull requests et historique des commits sur GitHub
 
 ### 9.2 Références
 
