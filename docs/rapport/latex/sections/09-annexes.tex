@@ -1,23 +1,100 @@
 \appendix
 \chapter{Captures d'écran}
 
-% Chaque capture est un fichier PNG du dossier captures/ ; tant qu'il manque, un encadré le signale.
-\capture{catalogue}{Catalogue : liste paginée, filtre par catégorie et recherche}
-\capture{fiche-produit}{Fiche produit (visiteur, client, produit en rupture)}
-\capture{inscription-connexion}{Inscription et connexion, avec un message d'erreur}
-\capture{panier}{Panier avec plusieurs lignes et total}
-\capture{validation-commande}{Page de validation de la commande, puis message de confirmation}
-\capture{stock-insuffisant}{Refus de commande pour stock insuffisant}
-\capture{mes-commandes}{Historique « Mes commandes » et détail d'une commande avec le bouton d'annulation}
-\capture{profil}{Profil du client}
-\capture{tableau-de-bord}{Tableau de bord de l'administrateur}
-\capture{admin-catalogue}{Back-office : catégories, formulaire produit, liste des produits (stock, produit inactif)}
-\capture{admin-commandes}{Back-office : liste des commandes filtrée et changement de statut}
-\capture{admin-utilisateurs}{Back-office : liste des utilisateurs}
-\capture{page-erreur}{Page d'erreur (403 ou 404)}
-\capture{mobile}{Affichage mobile (barre de navigation repliée)}
-\capture{tables-mysql}{Tables générées dans MySQL}
-\capture{github}{Historique Git et pull requests sur GitHub}
+Les captures ont été prises sur l'application déployée en local (Tomcat 10.1, MySQL 8) avec un jeu de données
+de démonstration : cinq catégories, treize produits, un compte client et plusieurs commandes dans des statuts
+différents. Chaque capture est un fichier PNG du dossier \code{captures/}.
+
+\section{Catalogue et compte}
+
+\capture{catalogue}{Catalogue public : liste paginée par 10, filtre par catégorie et recherche (BF05 à BF07)}
+\capture{catalogue-recherche}{Catalogue filtré sur une catégorie et un mot-clé (BF06, BF07)}
+\capture{fiche-produit}{Fiche produit vue par un client connecté, avec le formulaire d'ajout au panier (BF08, BF09)}
+\capture{fiche-produit-rupture}{Fiche d'un produit en rupture vue par un visiteur (RG06, RG08)}
+\capture{inscription-erreur}{Inscription refusée : adresse e-mail déjà utilisée (BF01, RG01)}
+\capture{connexion-erreur}{Connexion refusée : identifiants incorrects (BF02)}
+\capture{profil}{Profil du client : informations et changement de mot de passe (BF04)}
+
+\section{Panier et commandes}
+
+\capture{panier}{Panier avec plusieurs lignes, sous-totaux et total (BF10 à BF12)}
+\capture{validation-commande}{Page de validation de la commande : récapitulatif et adresse de livraison (BF13)}
+\capture{commande-confirmee}{Commande enregistrée : message de confirmation et historique « Mes commandes » (BF13, BF14)}
+\capture{stock-insuffisant}{Commande refusée pour stock insuffisant ; le panier est conservé (RG12)}
+\capture{commande-detail}{Détail d'une commande « En attente », avec le bouton d'annulation (BF15, BF16)}
+
+\section{Back-office}
+
+\capture{tableau-de-bord}{Tableau de bord de l'administrateur (BF23)}
+\capture{admin-categories}{Liste des catégories (BF17)}
+\capture{admin-produits}{Liste des produits : mise à jour du stock, produit en rupture (BF18, BF19)}
+\capture{admin-produit-formulaire}{Formulaire de modification d'un produit (BF18)}
+\capture{admin-commandes}{Liste des commandes filtrée sur le statut « En attente », avec le changement de statut (BF20, BF21)}
+\capture{admin-commande-detail}{Détail d'une commande côté administrateur (BF20, BF21)}
+\capture{admin-utilisateurs}{Liste des utilisateurs, activation et désactivation d'un compte (BF22)}
+
+\section{Pages d'erreur et affichage mobile}
+
+\capture{erreur-403}{Page d'erreur 403 : un client tente d'accéder au back-office (BNF02)}
+\capture{erreur-404}{Page d'erreur 404 (BNF07)}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[height=0.5\textheight]{captures/mobile-catalogue.png}\hspace{1cm}
+  \includegraphics[height=0.5\textheight]{captures/mobile-menu.png}
+  \caption{Affichage mobile : barre de navigation repliée, puis dépliée (BNF08)}
+\end{figure}
+
+\section{Base de données}
+
+Tables générées par Hibernate (\code{hbm2ddl.auto = update}) à partir des entités, et structure de deux d'entre
+elles, telles que les affiche le client \code{mysql} :
+
+{\footnotesize
+\begin{verbatim}
+mysql> show tables;
++--------------------+
+| Tables_in_boutique |
++--------------------+
+| categorie          |
+| commande           |
+| ligne_commande     |
+| produit            |
+| utilisateur        |
++--------------------+
+
+mysql> describe produit;
++---------------+---------------+------+-----+---------+----------------+
+| Field         | Type          | Null | Key | Default | Extra          |
++---------------+---------------+------+-----+---------+----------------+
+| id            | bigint        | NO   | PRI | NULL    | auto_increment |
+| actif         | bit(1)        | NO   |     | NULL    |                |
+| date_creation | datetime(6)   | NO   |     | NULL    |                |
+| description   | varchar(2000) | YES  |     | NULL    |                |
+| image_url     | varchar(500)  | YES  |     | NULL    |                |
+| nom           | varchar(150)  | NO   |     | NULL    |                |
+| prix          | decimal(10,2) | NO   |     | NULL    |                |
+| stock         | int           | NO   |     | NULL    |                |
+| categorie_id  | bigint        | NO   | MUL | NULL    |                |
++---------------+---------------+------+-----+---------+----------------+
+
+mysql> describe ligne_commande;
++---------------+---------------+------+-----+---------+----------------+
+| Field         | Type          | Null | Key | Default | Extra          |
++---------------+---------------+------+-----+---------+----------------+
+| id            | bigint        | NO   | PRI | NULL    | auto_increment |
+| prix_unitaire | decimal(10,2) | NO   |     | NULL    |                |
+| quantite      | int           | NO   |     | NULL    |                |
+| commande_id   | bigint        | NO   | MUL | NULL    |                |
+| produit_id    | bigint        | NO   | MUL | NULL    |                |
++---------------+---------------+------+-----+---------+----------------+
+\end{verbatim}
+}
+
+\section{Suivi sur GitHub}
+
+\capture{github-pull-requests}{Pull requests fusionnées, une par étape (BNF12)}
+\capture{github-commits}{Historique des commits de la branche \code{main}}
 
 \chapter{Références}
 
