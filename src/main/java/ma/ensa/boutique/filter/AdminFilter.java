@@ -5,7 +5,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -14,7 +13,6 @@ import ma.ensa.boutique.model.Utilisateur;
 
 import java.io.IOException;
 
-@WebFilter("/admin/*")
 public class AdminFilter implements Filter {
 
     @Override

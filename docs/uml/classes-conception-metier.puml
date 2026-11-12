@@ -135,6 +135,16 @@ package "util" {
   class HibernateUtil {
     - {static} sessionFactory : SessionFactory
     + {static} getSessionFactory() : SessionFactory
+    + {static} fermer()
+  }
+  class DemarrageListener <<@WebListener>> {
+    + contextInitialized(evenement : ServletContextEvent)
+    + contextDestroyed(evenement : ServletContextEvent)
+  }
+  class Parametres <<utilitaire>> {
+    + {static} lireLong(valeur : String) : Long
+    + {static} lireEntier(valeur : String, parDefaut : int) : int
+    + {static} nombrePages(total : long, taillePage : int) : int
   }
 }
 
@@ -171,6 +181,7 @@ GenericDao <|-- ProduitDao
 GenericDao <|-- CommandeDao
 
 GenericDao ..> HibernateUtil
+DemarrageListener ..> HibernateUtil
 AuthService ..> HibernateUtil
 CatalogueService ..> HibernateUtil
 PanierService ..> HibernateUtil
