@@ -4,7 +4,7 @@ Module Architecture JEE · DLA2 · ENSA Agadir
 
 Binôme : LAHMOUZ Hamza, ELAOUAD Abdelhamid
 
-> Ce document est la base du rapport PDF. Les diagrammes sont repris de `docs/uml/` (exports SVG) ; les
+> Ce document est la base du rapport PDF (sources LaTeX dans `docs/rapport/latex/`). Les diagrammes sont repris de `docs/uml/` (exports SVG) ; les
 > captures d'écran sont listées en annexe.
 
 ## Sommaire
@@ -131,11 +131,12 @@ description reprend les besoins couverts, les règles appliquées et les tests m
 | 4 | Besoins P3 : profil (BF04), annulation client (BF16), tableau de bord (BF23) | #12 | `feature/p3` | #19 |
 | 5 | README et rapport | #13 | `feature/livrables` | #20 |
 | 5 | Cohérence finale : séquences, ordre des filtres, documentation | #21 | `feature/coherence-finale` | #22 |
+| 5 | Rapport final au format PDF (LaTeX) | #23 | `feature/rapport-pdf` | #24 |
 
 Remarques :
 
 - Les tickets et les pull requests partagent la même numérotation sur GitHub, d'où les numéros non
-  consécutifs des PR (#1 à #3, puis #14 à #20, puis #22).
+  consécutifs des PR (#1 à #3, puis #14 à #20, puis #22 et #24).
 - Le texte « Closes #N » en fin de description de PR ferme automatiquement le ticket à la fusion.
 - Les P3 ont été regroupés dans une PR séparée (#19) pour pouvoir être isolés de l'étape 9 si nécessaire.
 
