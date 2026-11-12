@@ -7,12 +7,15 @@ import ma.ensa.boutique.util.HibernateUtil;
 import org.hibernate.Session;
 import org.mindrot.jbcrypt.BCrypt;
 
+import java.util.List;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 public class AuthService {
 
     private static final Pattern FORMAT_EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final int LONGUEUR_MIN_MOT_DE_PASSE = 6;
+    public static final int TAILLE_PAGE = 10;
 
     private final UtilisateurDao utilisateurDao = new UtilisateurDao();
 
@@ -67,6 +70,28 @@ public class AuthService {
         return utilisateur;
     }
 
+    public List<Utilisateur> listerUtilisateurs(int page) {
+        return enTransaction(() -> utilisateurDao.listerPagine((Math.max(page, 1) - 1) * TAILLE_PAGE, TAILLE_PAGE));
+    }
+
+    public long compterUtilisateurs() {
+        return enTransaction(utilisateurDao::compter);
+    }
+
+    public void changerEtatCompte(Long id, boolean actif) {
+        enTransaction(() -> {
+            Utilisateur utilisateur = utilisateurDao.trouverParId(id);
+            if (utilisateur == null) {
+                throw new RegleMetierException("Utilisateur introuvable.");
+            }
+            if (!actif && utilisateur.getRole() == Role.ADMIN) {
+                throw new RegleMetierException("Un compte administrateur ne peut pas être désactivé.");
+            }
+            utilisateur.setActif(actif);
+            return null;
+        });
+    }
+
     private void verifierChamps(Utilisateur utilisateur, String motDePasse) {
         if (estVide(utilisateur.getNom()) || estVide(utilisateur.getPrenom())
                 || estVide(utilisateur.getEmail()) || estVide(motDePasse)) {
@@ -96,5 +121,18 @@ public class AuthService {
 
     private boolean estVide(String valeur) {
         return valeur == null || valeur.isBlank();
+    }
+
+    private <R> R enTransaction(Supplier<R> traitement) {
+        Session session = HibernateUtil.getSessionFactory().getCurrentSession();
+        session.beginTransaction();
+        try {
+            R resultat = traitement.get();
+            session.getTransaction().commit();
+            return resultat;
+        } catch (RuntimeException e) {
+            session.getTransaction().rollback();
+            throw e;
+        }
     }
 }
