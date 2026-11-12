@@ -24,6 +24,14 @@
             </div>
         </a>
     </div>
+    <div class="col-sm-6 col-lg-4">
+        <a class="card h-100 text-decoration-none shadow-sm" href="${ctx}/admin/utilisateurs">
+            <div class="card-body">
+                <h2 class="h5">Utilisateurs</h2>
+                <p class="text-muted mb-0">Consulter les comptes, les activer ou les désactiver.</p>
+            </div>
+        </a>
+    </div>
 </div>
 
 <jsp:include page="/WEB-INF/views/commun/pied.jsp"/>

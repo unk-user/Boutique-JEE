@@ -25,26 +25,28 @@
                     <li class="nav-item"><a class="nav-link" href="${ctx}/admin/categories">Catégories</a></li>
                     <li class="nav-item"><a class="nav-link" href="${ctx}/admin/produits">Produits</a></li>
                     <li class="nav-item"><a class="nav-link" href="${ctx}/admin/commandes">Commandes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/utilisateurs">Utilisateurs</a></li>
                 </c:if>
                 <c:if test="${sessionScope.utilisateur.role == 'CLIENT'}">
                     <li class="nav-item"><a class="nav-link" href="${ctx}/client/commandes">Mes commandes</a></li>
                 </c:if>
             </ul>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mt-md-0">
             <c:choose>
                 <c:when test="${empty sessionScope.utilisateur}">
-                    <a class="btn btn-outline-light btn-sm me-2" href="${ctx}/connexion">Connexion</a>
+                    <a class="btn btn-outline-light btn-sm" href="${ctx}/connexion">Connexion</a>
                     <a class="btn btn-light btn-sm" href="${ctx}/inscription">Inscription</a>
                 </c:when>
                 <c:otherwise>
                     <c:if test="${sessionScope.utilisateur.role == 'CLIENT'}">
-                        <a class="btn btn-outline-light btn-sm me-2" href="${ctx}/client/panier">
+                        <a class="btn btn-outline-light btn-sm" href="${ctx}/client/panier">
                             Panier
                             <span class="badge text-bg-light">
                                 <c:out value="${empty sessionScope.panier ? 0 : sessionScope.panier.lignes.size()}"/>
                             </span>
                         </a>
                     </c:if>
-                    <span class="navbar-text me-3">
+                    <span class="navbar-text py-0">
                         <c:out value="${sessionScope.utilisateur.prenom} ${sessionScope.utilisateur.nom}"/>
                     </span>
                     <form method="post" action="${ctx}/deconnexion" class="d-inline">
@@ -52,6 +54,7 @@
                     </form>
                 </c:otherwise>
             </c:choose>
+            </div>
         </div>
     </div>
 </nav>
