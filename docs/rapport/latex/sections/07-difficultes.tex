@@ -1,6 +1,83 @@
 \chapter{Difficultés rencontrées et solutions}
 
-% Section rédigée par Hamza : remplacer l'encadré ci-dessous par le texte.
-\begin{afaire}
-  Section rédigée par Hamza.
-\end{afaire}
+Ce chapitre présente les cinq difficultés qui nous ont demandé le plus de temps. Chacune a été l'occasion de
+mieux comprendre le fonctionnement d'Hibernate et des servlets au-delà des exemples vus en cours.
+
+\section{Chargement paresseux des associations dans les JSP}
+
+\textbf{Problème.} La page de détail d'une commande provoquait une erreur au moment d'afficher ses lignes,
+alors que la commande elle-même était correctement chargée par le service.
+
+\textbf{Cause.} L'association \code{Commande.lignes} est chargée à la demande. Or la session Hibernate est
+fermée à la fin de la transaction, dans le service, c'est-à-dire avant que la JSP ne parcoure la collection :
+Hibernate ne peut alors plus aller chercher les lignes en base.
+
+\textbf{Solution.} Nous avons choisi de charger explicitement ce dont la vue a besoin, plutôt que de garder la
+session ouverte pendant l'affichage. Le détail d'une commande passe par une requête \code{join fetch}
+(\code{CommandeDao.trouverAvecLignes}) qui ramène la commande, ses lignes et leurs produits en une seule
+requête. Les associations \code{@ManyToOne} (catégorie d'un produit, client d'une commande) restent en
+chargement immédiat, et nous n'accédons jamais aux commandes d'un utilisateur à partir de l'objet conservé en
+session HTTP.
+
+\section{Cohérence du stock lors de commandes simultanées}
+
+\textbf{Problème.} En testant deux commandes envoyées au même moment sur le dernier exemplaire d'un produit,
+les deux pouvaient être acceptées : le stock était vérifié par chacune avant que l'autre ne l'ait décrémenté.
+
+\textbf{Cause.} Une transaction garantit que la commande est enregistrée entièrement ou pas du tout (RG12),
+mais elle n'empêche pas, à elle seule, deux transactions de lire la même valeur du stock.
+
+\textbf{Solution.} Dans la transaction, chaque produit du panier est relu avec un verrou en écriture
+(\code{select … for update}) par la méthode \code{trouverEtVerrouiller} de \code{ProduitDao} : la seconde
+commande attend la fin de la première et lit le stock à jour. Une première version verrouillait aussi la catégorie du produit, chargée en
+même temps que lui ; nous l'avons remplacée par une requête HQL qui ne porte que sur le produit, et les produits
+sont verrouillés par identifiant croissant pour que deux commandes ne se bloquent pas mutuellement. Pour
+l'annulation, les quantités sont rendues par une requête calculée par la base, afin de ne pas écraser une vente
+enregistrée entre-temps (RG14) :
+\begin{center}
+  \code{update Produit p set p.stock = p.stock + :quantite where p.id = :id}
+\end{center}
+
+\section{Recherche du catalogue avec des critères facultatifs}
+
+\textbf{Problème.} Le catalogue combine deux critères facultatifs, la catégorie (BF06) et le mot-clé (BF07).
+Notre première requête HQL traitait les deux cas dans une seule clause, de la forme
+\code{:categorieId is null or p.categorie.id = :categorieId}, et ne fonctionnait pas correctement lorsque le
+critère était absent.
+
+\textbf{Cause.} Avec Hibernate 6, un paramètre qui vaut \code{null} n'a pas de type connu, ce qui pose problème
+dans ce genre de comparaison.
+
+\textbf{Solution.} La clause \code{where} est construite selon les critères réellement fournis : la condition
+sur la catégorie ou sur le mot-clé n'est ajoutée que si le critère est présent. Seuls des fragments fixes sont
+concaténés ; les valeurs saisies passent toujours par des paramètres nommés (BNF03). La même méthode sert à la
+liste et au comptage, ce qui garantit que la pagination correspond aux résultats affichés.
+
+\section{Affichage des dates \code{LocalDateTime} avec la JSTL}
+
+\textbf{Problème.} Les dates de commande et d'inscription sont des \code{LocalDateTime} dans les entités, mais
+la balise \code{fmt:formatDate} de la JSTL ne les accepte pas : elle n'accepte que des objets
+\code{java.util.Date}.
+
+\textbf{Cause.} La JSTL est antérieure à l'API \code{java.time} et ne la prend pas en charge.
+
+\textbf{Solution.} Plutôt que de revenir à \code{java.util.Date} ou d'écrire du code Java dans les pages (les
+scriptlets sont exclus, BNF06), le formatage est confié à l'entité : un accesseur
+\code{getDateCommandeFormatee()} renvoie la date au format \code{jj/mm/aaaa hh:mm}, et la JSP l'affiche
+simplement avec \code{<c:out>}.
+
+\section{Paramètres invalides et erreurs 500}
+
+\textbf{Problème.} Une adresse modifiée à la main, par exemple \code{/produit?id=abc} ou un numéro de page
+négatif, provoquait une erreur 500. Certaines saisies passaient aussi les contrôles par erreur : un champ plus
+long que sa colonne produisait une erreur SQL à l'inscription, et un prix de 0,004 était accepté puis arrondi à
+0,00, en contradiction avec RG05.
+
+\textbf{Cause.} Les paramètres étaient convertis directement dans les servlets, et certains contrôles étaient
+faits avant la mise en forme de la valeur.
+
+\textbf{Solution.} La classe \code{Parametres} centralise la lecture des paramètres numériques : une valeur
+absente ou mal formée donne \code{null} ou une valeur par défaut, jamais une exception, et le service répond
+alors « Produit introuvable. ». Le numéro de page est ramené dans les limites existantes. Les longueurs sont
+vérifiées dans le service avant l'enregistrement, et le prix est arrondi au centime avant le contrôle de RG05.
+Les erreurs restantes sont dirigées vers une page d'erreur commune, sans trace technique.
