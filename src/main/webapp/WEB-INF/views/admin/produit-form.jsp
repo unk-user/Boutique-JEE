@@ -38,12 +38,12 @@
                         <div class="col-6 col-sm-3">
                             <label for="prix" class="form-label">Prix (DH) *</label>
                             <input type="text" inputmode="decimal" class="form-control" id="prix" name="prix" required
-                                   pattern="[0-9]+([.,][0-9]{1,2})?" title="Exemple : 149,90"
+                                   pattern="[0-9]{1,8}([.,][0-9]{1,2})?" title="Nombre positif avec 2 décimales au plus, exemple : 149,90"
                                    value="<c:out value='${produit.prix}'/>">
                         </div>
                         <div class="col-6 col-sm-3">
                             <label for="stock" class="form-label">Stock *</label>
-                            <input type="number" class="form-control" id="stock" name="stock" required min="0"
+                            <input type="number" class="form-control" id="stock" name="stock" required min="0" max="2147483647"
                                    value="${produit.stock}">
                         </div>
                         <div class="col-12">

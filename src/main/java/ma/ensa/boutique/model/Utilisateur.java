@@ -3,6 +3,7 @@ package ma.ensa.boutique.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -76,6 +77,10 @@ public class Utilisateur {
 
     public boolean isActif() { return actif; }
     public void setActif(boolean actif) { this.actif = actif; }
+
+    public String getDateInscriptionFormatee() {
+        return dateInscription == null ? "" : dateInscription.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
 
     public LocalDateTime getDateInscription() { return dateInscription; }
     public void setDateInscription(LocalDateTime dateInscription) { this.dateInscription = dateInscription; }

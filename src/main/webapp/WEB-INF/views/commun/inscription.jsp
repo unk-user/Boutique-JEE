@@ -28,12 +28,12 @@
                         <div class="col-sm-6">
                             <label for="motDePasse" class="form-label">Mot de passe * (6 caractères minimum)</label>
                             <input type="password" class="form-control" id="motDePasse" name="motDePasse"
-                                   required minlength="6">
+                                   required minlength="6" autocomplete="new-password">
                         </div>
                         <div class="col-sm-6">
                             <label for="confirmation" class="form-label">Confirmation du mot de passe *</label>
                             <input type="password" class="form-control" id="confirmation" name="confirmation"
-                                   required minlength="6">
+                                   required minlength="6" autocomplete="new-password">
                         </div>
                         <div class="col-12">
                             <label for="adresse" class="form-label">Adresse</label>

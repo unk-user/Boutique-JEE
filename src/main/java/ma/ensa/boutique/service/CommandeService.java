@@ -57,6 +57,10 @@ public class CommandeService {
             if (utilisateur == null) {
                 throw new RegleMetierException("Utilisateur introuvable.");
             }
+            // Compte désactivé par un administrateur depuis la connexion (BF22)
+            if (!utilisateur.isActif()) {
+                throw new RegleMetierException("Votre compte est désactivé : vous ne pouvez plus commander.");
+            }
             Commande commande = new Commande(utilisateur, adresse, StatutCommande.EN_ATTENTE);
 
             for (LignePanier lignePanier : lignesPanier) {
