@@ -76,8 +76,8 @@
                 <input type="hidden" name="action" value="vider">
                 <button type="submit" class="btn btn-outline-danger">Vider le panier</button>
             </form>
-            <%-- BF13 : la validation de la commande arrive à l'étape suivante --%>
-            <button type="button" class="btn btn-success ms-md-auto" disabled>Passer la commande</button>
+            <%-- BF13 --%>
+            <a class="btn btn-success ms-md-auto" href="${ctx}/client/commandes?action=valider">Passer la commande</a>
         </div>
     </c:otherwise>
 </c:choose>
