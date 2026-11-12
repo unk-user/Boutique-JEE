@@ -163,8 +163,7 @@ public class CommandeService {
             List<LigneCommande> lignes = new ArrayList<>(commande.getLignes());
             lignes.sort(Comparator.comparing(ligne -> ligne.getProduit().getId()));
             for (LigneCommande ligne : lignes) {
-                Produit produit = produitDao.trouverEtVerrouiller(ligne.getProduit().getId());
-                produit.setStock(produit.getStock() + ligne.getQuantite());
+                produitDao.reintegrerStock(ligne.getProduit().getId(), ligne.getQuantite());
             }
         }
         commande.setStatut(nouveauStatut);

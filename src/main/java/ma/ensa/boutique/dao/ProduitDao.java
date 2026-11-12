@@ -44,6 +44,14 @@ public class ProduitDao extends GenericDao<Produit> {
                 .uniqueResult();
     }
 
+    public void reintegrerStock(Long id, int quantite) {
+        session()
+                .createMutationQuery("update Produit p set p.stock = p.stock + :quantite where p.id = :id")
+                .setParameter("quantite", quantite)
+                .setParameter("id", id)
+                .executeUpdate();
+    }
+
     public List<Produit> rechercher(Long categorieId, String motCle, int debut, int taille) {
         Query<Produit> requete = session().createQuery(
                 "from Produit p" + conditions(categorieId, motCle) + " order by p.dateCreation desc, p.id desc",
