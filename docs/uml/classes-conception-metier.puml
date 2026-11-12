@@ -44,6 +44,8 @@ package "service" {
     + listerCommandes(statut : StatutCommande, page : int) : List<Commande>
     + compterCommandes(statut : StatutCommande) : long
     + trouverCommande(id : Long) : Commande
+    + statutsSuivants(statut : StatutCommande) : List<StatutCommande>
+    + transitions() : Map<StatutCommande, List<StatutCommande>>
     + changerStatut(commandeId : Long, nouveauStatut : StatutCommande)
     + calculerChiffreAffaires() : BigDecimal
   }
@@ -87,6 +89,7 @@ package "dao" {
     + listerParStatut(statut : StatutCommande, debut : int, taille : int) : List<Commande>
     + compterParStatut(statut : StatutCommande) : long
     + trouverAvecLignes(id : Long) : Commande
+    + trouverEtVerrouiller(id : Long) : Commande
     + calculerChiffreAffaires() : BigDecimal
   }
 }
@@ -97,6 +100,15 @@ package "model" {
   class Produit <<@Entity>>
   class Commande <<@Entity>> {
     + ajouterLigne(ligne : LigneCommande)
+    + getDateCommandeFormatee() : String
+  }
+  enum StatutCommande {
+    EN_ATTENTE
+    VALIDEE
+    EXPEDIEE
+    LIVREE
+    ANNULEE
+    + getLibelle() : String
   }
   class LigneCommande <<@Entity>>
   class Panier <<session>> {
@@ -140,6 +152,7 @@ CategorieDao ..> Categorie
 ProduitDao ..> Produit
 CommandeDao ..> Commande
 Commande "1" *-- "1..*" LigneCommande
+Commande ..> StatutCommande
 
 ' Mise en page : services et DAO sur deux rangées
 AuthService -[hidden]right- CatalogueService
