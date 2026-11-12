@@ -1,0 +1,26 @@
+\chapter{Conclusion et perspectives}
+
+\section{Bilan}
+
+L'application couvre l'ensemble du cahier des charges : les 23 besoins fonctionnels (P1, P2 et P3), les
+16 règles de gestion, contrôlées dans la couche service, et les besoins non fonctionnels de sécurité, de
+fiabilité et d'ergonomie. La démarche du modèle en Y a permis de fixer les cas d'utilisation et la
+conception avant le code, puis de faire évoluer les diagrammes de conception avec l'implémentation.
+Le passage de commande, transactionnel et protégé contre les accès concurrents, constitue le cœur
+technique du projet.
+
+\section{Perspectives}
+
+Améliorations possibles, hors du périmètre actuel :
+
+\begin{itemize}
+  \item Paiement en ligne réel (le paiement est aujourd'hui simulé, à la livraison).
+  \item Envoi d'e-mails transactionnels (confirmation de commande, changement de statut).
+  \item Suivi de livraison avec un transporteur.
+  \item Panier persistant en base, conservé entre deux connexions.
+  \item Envoi d'images de produits (aujourd'hui une URL d'image est saisie).
+  \item Contrôle de l'état du compte à chaque requête, pour déconnecter immédiatement un client désactivé.
+  \item Signalement dans le panier des produits devenus indisponibles avant la validation.
+  \item Tests automatisés (tests unitaires des services, tests d'intégration des DAO).
+  \item Pool de connexions de production (par exemple HikariCP) à la place du pool intégré d'Hibernate.
+\end{itemize}

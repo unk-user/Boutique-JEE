@@ -1,0 +1,342 @@
+\chapter{Descriptions textuelles des cas d'utilisation}\label{chap:cas}
+
+Les messages cités sont ceux affichés par l'application. Sauf mention contraire, chaque refus réaffiche la
+page avec un message d'erreur et ne modifie aucune donnée.
+
+% ------------------------------------------------------------------
+\section{S'inscrire (BF01)}
+
+\fichecas{Visiteur}
+  {Le visiteur n'est pas connecté.}
+  {Un compte CLIENT actif est créé, mot de passe haché.}
+  {RG01, RG02, BNF01}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item Le visiteur ouvre la page « Inscription » (\code{/inscription}).
+  \item Il saisit nom, prénom, e-mail, mot de passe, confirmation, et facultativement adresse et téléphone.
+  \item Le système vérifie les champs obligatoires, le format de l'e-mail, la longueur minimale du mot de passe
+        (6 caractères), la longueur des champs et l'égalité des deux mots de passe.
+  \item Le système vérifie que l'e-mail (enregistré en minuscules, sans espaces) n'est pas déjà utilisé (RG01).
+  \item Le système crée le compte avec le rôle CLIENT (RG02) et le mot de passe haché par BCrypt (BNF01).
+  \item Le visiteur est redirigé vers la page de connexion : « Inscription réussie. Vous pouvez vous connecter. »
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 3a. Champ obligatoire vide : « Le nom, le prénom, l'e-mail et le mot de passe sont obligatoires. »
+  \item 3b. E-mail mal formé : « L'adresse e-mail n'est pas valide. »
+  \item 3c. Mot de passe trop court : « Le mot de passe doit contenir au moins 6 caractères. »
+  \item 3d. Confirmation différente : « Les deux mots de passe ne correspondent pas. »
+  \item 3e. Champ trop long : « Un des champs saisis est trop long. »
+  \item 4a. E-mail déjà utilisé : « Cette adresse e-mail est déjà utilisée. »
+  \item Dans tous ces cas, le formulaire est réaffiché avec les valeurs saisies (sauf le mot de passe).
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{S'authentifier et se déconnecter (BF02, BF03)}
+
+\fichecas{Visiteur (connexion) ; Client, Administrateur (déconnexion)}
+  {Un compte existe pour l'e-mail saisi.}
+  {Une nouvelle session contient l'utilisateur connecté ; à la déconnexion, la session est invalidée.}
+  {BNF01, BNF04}
+
+\scenario{Scénario nominal (connexion)}
+\begin{enumerate}
+  \item Le visiteur ouvre « Connexion » (\code{/connexion}) et saisit son e-mail et son mot de passe.
+  \item Le système recherche l'utilisateur par e-mail et compare le mot de passe au hachage BCrypt.
+  \item Le système vérifie que le compte est actif.
+  \item L'ancienne session est invalidée, une nouvelle session est créée avec l'utilisateur (protection contre
+        la fixation de session).
+  \item Un client est redirigé vers le catalogue, un administrateur vers le tableau de bord.
+\end{enumerate}
+
+\scenario{Scénario nominal (déconnexion)}
+\begin{enumerate}
+  \item L'utilisateur connecté clique sur « Déconnexion » (formulaire POST vers \code{/deconnexion}).
+  \item La session est invalidée (le panier est donc vidé) et l'utilisateur est redirigé vers la page de
+        connexion : « Vous êtes déconnecté. »
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 1a. Champ vide : « Veuillez saisir votre e-mail et votre mot de passe. »
+  \item 2a. E-mail inconnu ou mot de passe faux : « E-mail ou mot de passe incorrect. » (même message dans les deux
+        cas, pour ne pas révéler l'existence d'un compte).
+  \item 3a. Compte désactivé par l'administrateur : « Ce compte est désactivé. »
+  \item Session inactive pendant 30 minutes : elle expire et l'utilisateur doit se reconnecter (BNF04).
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Consulter et rechercher le catalogue (BF05 à BF08)}
+
+\fichecas{Visiteur (et donc Client)}
+  {Aucune.}
+  {Aucune modification des données.}
+  {RG06, RG15, BNF10}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item Le visiteur ouvre le catalogue (\code{/catalogue}, page d'accueil de l'application).
+  \item Le système affiche les produits actifs (RG15), les plus récents d'abord, par pages de 10 (BNF10), avec
+        image, nom, catégorie et prix. Un produit à stock 0 reste affiché avec le badge « Rupture » (RG06).
+  \item Le visiteur choisit une catégorie (BF06) et/ou saisit un mot-clé (BF07) : le système filtre sur la
+        catégorie et cherche le mot-clé dans le nom et la description, sans tenir compte de la casse. Les filtres
+        sont conservés dans les liens de pagination.
+  \item Le visiteur ouvre la fiche d'un produit (\code{/produit?id=N}, BF08) : image, prix, stock, description,
+        catégorie.
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 2a. Aucun produit ne correspond : la liste est vide avec un message.
+  \item 2b. Numéro de page invalide ou hors limites : le système affiche la page existante la plus proche.
+  \item 4a. Produit inconnu, désactivé ou identifiant invalide : retour au catalogue avec « Produit introuvable. »
+  \item 4b. Sur la fiche, un visiteur voit « Connectez-vous pour commander » ; un client voit le formulaire
+        « Ajouter au panier » si le produit n'est pas en rupture.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Gérer le panier (BF09 à BF12)}
+
+\fichecas{Client}
+  {Le client est connecté (RG08, contrôlé par \code{AuthFilter}).}
+  {Le panier de la session est à jour ; rien n'est enregistré en base.}
+  {RG06, RG07, RG08, RG15}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item Sur la fiche d'un produit, le client choisit une quantité et clique sur « Ajouter au panier » (BF09).
+  \item Le système recharge le produit depuis la base, vérifie qu'il est actif, que la quantité est un entier
+        supérieur ou égal à 1, que le stock n'est pas nul (RG06) et que la quantité déjà au panier plus la
+        quantité ajoutée ne dépasse pas le stock (RG07).
+  \item Le produit est ajouté au panier (ou sa quantité est augmentée) : « Produit ajouté au panier. »
+  \item Le client ouvre « Panier » (\code{/client/panier}, BF12) : lignes, sous-totaux et montant total.
+  \item Il modifie la quantité d'une ligne (BF10, mêmes contrôles RG06 et RG07), retire une ligne ou vide le
+        panier (BF11).
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 1a. Visiteur non connecté : redirection vers \code{/connexion}. Administrateur : redirection vers le tableau de
+        bord (seul un client a un panier).
+  \item 2a. Produit inconnu ou désactivé : « Produit introuvable. »
+  \item 2b. Quantité vide, nulle, négative ou non numérique : « Quantité invalide : indiquez un nombre entier
+        supérieur ou égal à 1. »
+  \item 2c. Stock nul : « Produit en rupture de stock. »
+  \item 2d. Quantité cumulée supérieure au stock : « Quantité demandée supérieure au stock disponible (X en stock,
+        Y déjà dans votre panier). »
+  \item Après un refus à l'ajout, le client revient sur la fiche du produit avec le message.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Passer une commande (BF13)}
+
+\fichecas{Client}
+  {Le client est connecté et son panier n'est pas vide.}
+  {Une commande EN\_ATTENTE et ses lignes sont enregistrées, les stocks sont décrémentés, le panier est vidé.}
+  {RG09, RG10, RG11, RG12, RG15, BNF05}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item Depuis le panier, le client clique sur « Passer la commande ».
+  \item Le système affiche la page de validation (\code{/client/commandes?action=valider}) : récapitulatif du panier
+        et adresse de livraison préremplie avec l'adresse du profil.
+  \item Le client vérifie ou modifie l'adresse et clique sur « Confirmer la commande ».
+  \item Dans une seule transaction (BNF05), le système recharge le compte du client, puis chaque produit du
+        panier avec un verrou en écriture ; il vérifie que le produit est actif et que le stock suffit.
+  \item Pour chaque ligne, le stock est décrémenté (RG12) et une ligne de commande est créée avec le prix actuel
+        du produit (RG10).
+  \item Le montant total est calculé comme la somme quantité × prix unitaire (RG11) ; la commande est enregistrée
+        avec ses lignes, au statut EN\_ATTENTE.
+  \item Le panier est vidé et le client est redirigé vers « Mes commandes » : « Votre commande n° X a bien été
+        enregistrée. Montant total : … DH. »
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 3a. Panier vide (RG09) : « Votre panier est vide. »
+  \item 3b. Adresse vide ou trop longue : « L'adresse de livraison est obligatoire. » / « L'adresse de livraison est
+        trop longue (255 caractères maximum). »
+  \item 4a. Compte désactivé depuis la connexion : « Votre compte est désactivé : vous ne pouvez plus commander. »
+  \item 4b. Produit désactivé ou supprimé depuis l'ajout au panier (RG15) : « Le produit « nom » n'est plus
+        disponible : retirez-le de votre panier. »
+  \item 4c. Stock insuffisant (RG12) : « Stock insuffisant pour « nom » (X en stock, Y demandé(s)). »
+  \item Dans les cas 4a à 4c, la transaction est annulée (rollback) : aucune commande, aucune ligne, aucun stock
+        modifié. La page de validation est réaffichée avec le message et l'adresse saisie ; le panier est conservé.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Consulter ses commandes et annuler une commande (BF14, BF15, BF16)}
+
+\fichecas{Client}
+  {Le client est connecté.}
+  {Consultation : aucune modification. Annulation : commande ANNULEE, quantités remises en stock.}
+  {RG13, RG14, RG16, BNF10}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item Le client ouvre « Mes commandes » (\code{/client/commandes}, BF14) : ses commandes uniquement (RG16), les plus
+        récentes d'abord, par pages de 10, avec numéro, date, montant et statut.
+  \item Il ouvre le détail d'une commande (\code{/client/commandes?id=N}, BF15) : lignes, prix unitaires enregistrés,
+        sous-totaux, total, adresse de livraison et statut.
+  \item Si la commande est « En attente », il clique sur « Annuler la commande » et confirme (BF16).
+  \item Le système verrouille la commande, vérifie qu'elle appartient au client et qu'elle est EN\_ATTENTE, remet
+        chaque quantité en stock (RG14) et passe la commande à ANNULEE, dans une même transaction.
+  \item Le détail est réaffiché : « Votre commande n° X a été annulée. »
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 2a. Commande d'un autre client, identifiant inconnu ou invalide : retour à la liste avec « Commande
+        introuvable. » (le système ne révèle pas l'existence de la commande, RG16).
+  \item 3a. Commande dans un autre statut : le bouton n'est pas affiché ; une requête forgée est refusée avec
+        « Seule une commande « En attente » peut être annulée. » (une commande « Validée » ne peut être annulée
+        que par l'administrateur).
+  \item 4a. Deux demandes d'annulation simultanées : le verrou les traite l'une après l'autre ; la seconde est
+        refusée et le stock n'est réintégré qu'une fois.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Consulter et modifier son profil (BF04)}
+
+\fichecas{Client}
+  {Le client est connecté.}
+  {Les informations (ou le mot de passe) sont mises à jour ; le rôle et l'état du compte ne changent pas.}
+  {RG01, BNF01}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item Le client ouvre « Mon profil » (\code{/client/profil}).
+  \item Il modifie nom, prénom, e-mail, adresse ou téléphone et enregistre.
+  \item Le système contrôle les champs et vérifie que le nouvel e-mail n'appartient à aucun autre compte (RG01),
+        puis enregistre ; l'utilisateur en session est remis à jour : « Votre profil a été mis à jour. »
+  \item Dans le second formulaire, il saisit son mot de passe actuel, le nouveau et la confirmation ; le système
+        vérifie le mot de passe actuel puis enregistre le nouveau haché (BNF01) : « Votre mot de passe a été
+        modifié. »
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 3a. Champ obligatoire vide, e-mail invalide ou déjà utilisé, champ trop long : message et formulaire
+        réaffiché.
+  \item 4a. Mot de passe actuel incorrect : « Le mot de passe actuel est incorrect. »
+  \item 4b. Confirmation différente ou nouveau mot de passe de moins de 6 caractères : message d'erreur.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Gérer les catégories, les produits et le stock (BF17, BF18, BF19)}
+
+\fichecas{Administrateur}
+  {L'administrateur est connecté (\code{AdminFilter}).}
+  {Le catalogue est mis à jour.}
+  {RG03, RG04, RG05, RG06, RG15}
+
+\scenario{Scénario nominal (catégories, \code{/admin/categories})}
+\begin{enumerate}
+  \item L'administrateur consulte la liste des catégories.
+  \item Il crée ou modifie une catégorie (nom obligatoire et unique, description facultative) : « Catégorie
+        enregistrée. »
+  \item Il supprime une catégorie vide : « Catégorie supprimée. »
+\end{enumerate}
+
+\scenario{Scénario nominal (produits, \code{/admin/produits})}
+\begin{enumerate}
+  \item L'administrateur consulte la liste paginée de tous les produits, actifs ou non (les inactifs sont grisés).
+  \item Il crée ou modifie un produit : nom, description, prix, stock, URL de l'image, catégorie, case « Actif ».
+  \item Le système vérifie la catégorie (RG03), le prix strictement positif après arrondi au centime et le stock
+        entier positif ou nul (RG05) : « Produit enregistré. »
+  \item Il met à jour le stock directement depuis la liste (BF19) : « Stock mis à jour. »
+  \item Il supprime un produit : s'il n'a jamais été commandé, il est supprimé ; sinon il est désactivé (RG15) et
+        disparaît du catalogue public.
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item Catégorie : nom vide ou déjà pris (« Une catégorie porte déjà ce nom. ») ; suppression d'une catégorie qui
+        contient des produits, même inactifs (RG04) : « Cette catégorie contient des produits : elle ne peut pas
+        être supprimée. »
+  \item Produit : catégorie absente (« Veuillez choisir une catégorie. »), prix nul, négatif ou non numérique
+        (« Le prix doit être strictement positif. »), stock négatif (« Le stock doit être un entier supérieur ou
+        égal à 0. »), champ trop long.
+  \item Un produit désactivé par RG15 peut être réactivé en cochant « Actif ».
+  \item Identifiant inconnu ou invalide : « Produit introuvable. » / « Catégorie introuvable. »
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Gérer les commandes et changer leur statut (BF20, BF21)}
+
+\fichecas{Administrateur}
+  {L'administrateur est connecté.}
+  {Le statut de la commande est modifié ; en cas d'annulation, les quantités sont remises en stock.}
+  {RG13, RG14}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item L'administrateur ouvre « Commandes » (\code{/admin/commandes}) : toutes les commandes avec leur client, par
+        pages de 10, plus récentes d'abord ; il peut filtrer par statut (BF20).
+  \item Il ouvre le détail d'une commande ou reste sur la liste.
+  \item Il choisit le nouveau statut parmi ceux autorisés depuis le statut actuel (RG13) : EN\_ATTENTE → VALIDEE
+        ou ANNULEE ; VALIDEE → EXPEDIEE ou ANNULEE ; EXPEDIEE → LIVREE.
+  \item Le système verrouille la commande, contrôle la transition et enregistre : « La commande n° X est
+        maintenant « … ». »
+  \item Pour une annulation (confirmation demandée), chaque quantité est remise en stock dans la même transaction
+        (RG14) : « … Le stock a été réintégré. »
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 3a. Commande LIVREE ou ANNULEE : statut définitif, aucun choix proposé.
+  \item 4a. Transition interdite (requête forgée : même statut, retour en arrière, saut d'étape) : « Changement de
+        statut non autorisé : une commande « … » ne peut pas passer à « … ». » ; statut inconnu : « Statut de
+        commande inconnu. »
+  \item 4b. Commande inexistante : « Commande introuvable. »
+  \item Un client qui accède à \code{/admin/*} reçoit une page d'erreur 403 ; un visiteur est redirigé vers la
+        connexion.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Gérer les utilisateurs (BF22)}
+
+\fichecas{Administrateur}
+  {L'administrateur est connecté.}
+  {Le compte est activé ou désactivé.}
+  {RG02}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item L'administrateur ouvre « Utilisateurs » (\code{/admin/utilisateurs}) : liste paginée (nom, e-mail, téléphone,
+        rôle, date d'inscription, état), plus récents d'abord.
+  \item Il clique sur « Désactiver » (avec confirmation) ou « Activer » pour un compte client.
+  \item Le système enregistre : un compte désactivé ne peut plus se connecter ni passer de commande.
+\end{enumerate}
+
+\scenario{Scénarios alternatifs et d'erreur}
+\begin{itemize}
+  \item 2a. Compte administrateur : « Un compte administrateur ne peut pas être désactivé. » (ce qui empêche aussi
+        l'administrateur de perdre son propre accès).
+  \item 2b. Identifiant inconnu : « Utilisateur introuvable. »
+  \item 3a. Un client déjà connecté au moment de sa désactivation garde sa session jusqu'à sa déconnexion ou son
+        expiration, mais ne peut plus commander.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Consulter le tableau de bord (BF23)}
+
+\fichecas{Administrateur}
+  {L'administrateur est connecté (il arrive sur cette page après la connexion).}
+  {Aucune modification des données.}
+  {RG06, RG15}
+
+\scenario{Scénario nominal}
+\begin{enumerate}
+  \item L'administrateur ouvre « Tableau de bord » (\code{/admin/tableau-de-bord}).
+  \item Le système affiche le nombre total de commandes et le nombre par statut (chaque statut mène à la liste
+        filtrée), le chiffre d'affaires (somme des montants des commandes non annulées, commandes en attente
+        comprises) et la liste des produits actifs dont le stock est à 0, avec un lien pour les réapprovisionner.
+\end{enumerate}
+
+\scenario{Scénarios alternatifs}
+\begin{itemize}
+  \item 2a. Base vide : 0 commande, « 0,00 DH », « Aucun produit en rupture. »
+\end{itemize}
