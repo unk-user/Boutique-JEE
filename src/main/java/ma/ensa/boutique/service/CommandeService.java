@@ -208,6 +208,11 @@ public class CommandeService {
         commande.setStatut(nouveauStatut);
     }
 
+    // BF23 : chiffre d'affaires = total des commandes qui ne sont pas annulées
+    public BigDecimal calculerChiffreAffaires() {
+        return enTransaction(commandeDao::calculerChiffreAffaires);
+    }
+
     private int debut(int page) {
         return (Math.max(page, 1) - 1) * TAILLE_PAGE;
     }
