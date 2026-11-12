@@ -20,7 +20,7 @@ package "service" {
     + listerTousProduits(page : int) : List<Produit>
     + compterTousProduits() : long
     + enregistrerProduit(produit : Produit, categorieId : Long)
-    + supprimerProduit(id : Long)
+    + supprimerProduit(id : Long) : boolean
     + modifierStock(id : Long, stock : int)
     + listerProduitsEnRupture() : List<Produit>
     + listerCategories() : List<Categorie>

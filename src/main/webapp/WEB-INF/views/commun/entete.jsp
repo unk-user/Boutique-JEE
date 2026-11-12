@@ -21,7 +21,9 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="${ctx}/catalogue">Catalogue</a></li>
                 <c:if test="${sessionScope.utilisateur.role == 'ADMIN'}">
-                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/tableau-de-bord">Administration</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/tableau-de-bord">Tableau de bord</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/categories">Catégories</a></li>
+                    <li class="nav-item"><a class="nav-link" href="${ctx}/admin/produits">Produits</a></li>
                 </c:if>
             </ul>
             <c:choose>
@@ -47,4 +49,13 @@
     </c:if>
     <c:if test="${not empty erreur}">
         <div class="alert alert-danger" role="alert"><c:out value="${erreur}"/></div>
+    </c:if>
+    <%-- Messages flash : déposés en session avant une redirection, affichés une seule fois --%>
+    <c:if test="${not empty sessionScope.flashSucces}">
+        <div class="alert alert-success" role="alert"><c:out value="${sessionScope.flashSucces}"/></div>
+        <c:remove var="flashSucces" scope="session"/>
+    </c:if>
+    <c:if test="${not empty sessionScope.flashErreur}">
+        <div class="alert alert-danger" role="alert"><c:out value="${sessionScope.flashErreur}"/></div>
+        <c:remove var="flashErreur" scope="session"/>
     </c:if>
