@@ -13,7 +13,7 @@ participant ProduitDao
 participant "Session Hibernate" as Session
 
 Admin -> Vue : choisit le nouveau statut
-Vue -> AdminFilter : POST /admin/commandes (commandeId, statut)
+Vue -> AdminFilter : POST /admin/commandes (commandeId, nouveauStatut)
 AdminFilter -> AdminFilter : utilisateur en session avec role ADMIN ?
 alt non autorisé
   AdminFilter --> Admin : redirect /connexion
@@ -30,9 +30,8 @@ else ADMIN
     CommandeService --> AdminCommandeServlet : RegleMetierException (message en français)
   else nouveauStatut = ANNULEE (depuis EN_ATTENTE ou VALIDEE)
     loop pour chaque LigneCommande (par id de produit croissant)
-      CommandeService -> ProduitDao : trouverEtVerrouiller(produitId)
-      ProduitDao --> CommandeService : produit
-      CommandeService -> CommandeService : produit.stock += quantite (RG14)
+      CommandeService -> ProduitDao : reintegrerStock(produitId, quantite) (RG14)
+      note right : update ... set stock = stock + quantite\n(calcul fait par la base sur le stock actuel)
     end
     CommandeService -> CommandeService : commande.statut = ANNULEE
     CommandeService -> Session : commit()

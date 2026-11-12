@@ -78,6 +78,7 @@ package "dao" {
     + compterRecherche(categorieId : Long, motCle : String) : long
     + trouverActifParId(id : Long) : Produit
     + trouverEtVerrouiller(id : Long) : Produit
+    + reintegrerStock(id : Long, quantite : int)
     + listerPagine(debut : int, taille : int) : List<Produit>
     + compter() : long
     + estCommande(produitId : Long) : boolean
