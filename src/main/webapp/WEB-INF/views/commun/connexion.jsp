@@ -11,12 +11,13 @@
                 <form method="post" action="${pageContext.request.contextPath}/connexion">
                     <div class="mb-3">
                         <label for="email" class="form-label">E-mail</label>
-                        <input type="email" class="form-control" id="email" name="email" required
-                               value="<c:out value='${email}'/>">
+                        <input type="email" class="form-control" id="email" name="email" required maxlength="150"
+                               autocomplete="username" value="<c:out value='${email}'/>">
                     </div>
                     <div class="mb-3">
                         <label for="motDePasse" class="form-label">Mot de passe</label>
-                        <input type="password" class="form-control" id="motDePasse" name="motDePasse" required>
+                        <input type="password" class="form-control" id="motDePasse" name="motDePasse" required
+                               autocomplete="current-password">
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Se connecter</button>
                 </form>
