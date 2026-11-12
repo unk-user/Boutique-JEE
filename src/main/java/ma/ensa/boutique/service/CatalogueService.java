@@ -161,6 +161,10 @@ public class CatalogueService {
         });
     }
 
+    public List<Produit> listerProduitsEnRupture() {
+        return enTransaction(produitDao::listerEnRupture);
+    }
+
     private void verifierProduit(Produit produit) {
         if (estVide(produit.getNom())) {
             throw new RegleMetierException("Le nom du produit est obligatoire.");

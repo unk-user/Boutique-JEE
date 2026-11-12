@@ -6,6 +6,7 @@ import ma.ensa.boutique.model.StatutCommande;
 import org.hibernate.LockMode;
 import org.hibernate.query.Query;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class CommandeDao extends GenericDao<Commande> {
@@ -70,6 +71,14 @@ public class CommandeDao extends GenericDao<Commande> {
                 .createQuery("from Commande c where c.id = :id", Commande.class)
                 .setParameter("id", id)
                 .setHibernateLockMode(LockMode.PESSIMISTIC_WRITE)
+                .uniqueResult();
+    }
+
+    public BigDecimal calculerChiffreAffaires() {
+        return session()
+                .createQuery("select coalesce(sum(c.montantTotal), 0) from Commande c where c.statut <> :annulee",
+                        BigDecimal.class)
+                .setParameter("annulee", StatutCommande.ANNULEE)
                 .uniqueResult();
     }
 }

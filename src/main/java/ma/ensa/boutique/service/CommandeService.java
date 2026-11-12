@@ -188,6 +188,10 @@ public class CommandeService {
         commande.setStatut(nouveauStatut);
     }
 
+    public BigDecimal calculerChiffreAffaires() {
+        return enTransaction(commandeDao::calculerChiffreAffaires);
+    }
+
     private int debut(int page) {
         return (Math.max(page, 1) - 1) * TAILLE_PAGE;
     }
