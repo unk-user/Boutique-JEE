@@ -172,6 +172,7 @@ Navigateur
    │  HTTP
    ▼
 Filtres        EncodingFilter (/*), AuthFilter (/client/*), AdminFilter (/admin/*)
+               (déclarés dans web.xml, dans cet ordre)
    ▼
 Contrôleurs    Servlets @WebServlet : lisent la requête, appellent un service,
    │           puis forward vers une JSP ou redirection après un POST
