@@ -51,7 +51,7 @@
 % ---------- Titres ----------
 \titleformat{\chapter}[display]
   {\normalfont\color{primaire}}
-  {\large\mdseries\scshape Chapitre \thechapter}
+  {\large\mdseries\scshape \chaptertitlename\ \thechapter}
   {4pt}
   {\Huge\bfseries\raggedright}
   [\vspace{4pt}{\color{secondaire}\titlerule[1.2pt]}]
@@ -104,12 +104,13 @@
     \includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{#1}
     \caption{#2}\label{#3}
   \end{figure}}
-% Diagramme placé sous le texte d'une section en paysage (environnement landscape ouvert par l'appelant)
-\newcommand{\diagrammesuite}[3]{%
+% Diagramme placé sous le texte d'une section en paysage (environnement landscape ouvert par l'appelant).
+% Argument optionnel : hauteur maximale, réduite pour les diagrammes les plus hauts.
+\newcommand{\diagrammesuite}[4][0.74]{%
   \begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth,height=0.64\textheight,keepaspectratio]{#1}
-    \caption{#2}\label{#3}
+    \includegraphics[width=\linewidth,height=#1\textheight,keepaspectratio]{#2}
+    \caption{#3}\label{#4}
   \end{figure}}
 
 % Fiche d'un cas d'utilisation : acteur(s), précondition, postcondition, règles
@@ -137,6 +138,8 @@
       \caption{#2}
     \end{figure}}{%
     \begin{afaire}#2 (fichier attendu : \code{captures/#1.png})\end{afaire}}}
+
+\addto\captionsfrench{\def\tablename{Tableau}}
 
 \begin{document}
 
