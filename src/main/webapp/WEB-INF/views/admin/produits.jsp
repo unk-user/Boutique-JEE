@@ -20,7 +20,7 @@
                 <thead>
                 <tr>
                     <th>Produit</th><th>Catégorie</th><th class="text-end">Prix</th>
-                    <th>Stock (BF19)</th><th>État</th><th class="text-end">Actions</th>
+                    <th>Stock</th><th>État</th><th class="text-end">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
