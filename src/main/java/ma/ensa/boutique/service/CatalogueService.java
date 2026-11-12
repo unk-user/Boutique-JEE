@@ -22,6 +22,24 @@ public class CatalogueService {
     private final CategorieDao categorieDao = new CategorieDao();
     private final ProduitDao produitDao = new ProduitDao();
 
+    // ---------- Catalogue public (BF05 à BF08) ----------
+
+    // RG15 : seuls les produits actifs sont proposés ; RG06 : le stock 0 reste visible
+    public List<Produit> listerProduits(Long categorieId, String motCle, int page) {
+        String mot = nettoyer(motCle);
+        return enTransaction(() -> produitDao.rechercher(categorieId, mot, debut(page), TAILLE_PAGE));
+    }
+
+    public long compterProduits(Long categorieId, String motCle) {
+        String mot = nettoyer(motCle);
+        return enTransaction(() -> produitDao.compterRecherche(categorieId, mot));
+    }
+
+    // RG15 : la fiche d'un produit désactivé est introuvable (retourne null)
+    public Produit trouverProduitActif(Long id) {
+        return enTransaction(() -> produitDao.trouverActifParId(id));
+    }
+
     // ---------- Catégories (BF17) ----------
 
     public List<Categorie> listerCategories() {
