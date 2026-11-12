@@ -176,12 +176,11 @@ public class CommandeService {
         }
         if (nouveauStatut == StatutCommande.ANNULEE) {
             // RG14 : chaque quantité commandée retourne dans le stock du produit (même s'il est désactivé).
-            // Produits verrouillés par id croissant, dans le même ordre que passerCommande
+            // Produits traités par id croissant, dans le même ordre que passerCommande (pas d'interblocage)
             List<LigneCommande> lignes = new ArrayList<>(commande.getLignes());
             lignes.sort(Comparator.comparing(ligne -> ligne.getProduit().getId()));
             for (LigneCommande ligne : lignes) {
-                Produit produit = produitDao.trouverEtVerrouiller(ligne.getProduit().getId());
-                produit.setStock(produit.getStock() + ligne.getQuantite());
+                produitDao.reintegrerStock(ligne.getProduit().getId(), ligne.getQuantite());
             }
         }
         commande.setStatut(nouveauStatut);
