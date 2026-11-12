@@ -6,13 +6,13 @@ hide empty members
 left to right direction
 
 package "filter" {
-  class EncodingFilter <<@WebFilter("/*")>> {
+  class EncodingFilter <<"/*" (web.xml)>> {
     + doFilter(req, rep, chaine)
   }
-  class AuthFilter <<@WebFilter("/client/*")>> {
+  class AuthFilter <<"/client/*" (web.xml)>> {
     + doFilter(req, rep, chaine)
   }
-  class AdminFilter <<@WebFilter("/admin/*")>> {
+  class AdminFilter <<"/admin/*" (web.xml)>> {
     + doFilter(req, rep, chaine)
   }
 }
@@ -44,7 +44,7 @@ package "WEB-INF/views" {
   class "JSP (client, admin, commun)" as JSP <<vue>>
 }
 
-EncodingFilter ..> AuthFilter : chaîne
+EncodingFilter ..> AuthFilter : chaîne (ordre fixé dans web.xml)
 EncodingFilter ..> AdminFilter : chaîne
 AuthFilter ..> ProfilServlet
 AuthFilter ..> PanierServlet
@@ -78,6 +78,13 @@ note bottom of AuthFilter
   ADMIN : redirection vers /admin/tableau-de-bord
 end note
 note bottom of AdminFilter
-  BNF02 : rôle ADMIN obligatoire
+  BNF02 : rôle ADMIN obligatoire ;
+  non connecté : redirection vers /connexion,
+  connecté sans le rôle ADMIN : erreur 403
+end note
+note bottom of EncodingFilter
+  Les trois filtres sont déclarés dans web.xml :
+  l'ordre des filter-mapping (EncodingFilter,
+  AuthFilter, AdminFilter) est celui de la chaîne
 end note
 @enduml
