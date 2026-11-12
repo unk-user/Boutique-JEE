@@ -30,8 +30,9 @@ public abstract class GenericDao<T> {
         session().remove(entite);
     }
 
+    // Identifiant absent ou mal formé : null, traité comme « introuvable » par le service
     public T trouverParId(Long id) {
-        return session().get(classe, id);
+        return id == null ? null : session().get(classe, id);
     }
 
     public List<T> listerTous() {
