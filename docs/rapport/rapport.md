@@ -770,7 +770,81 @@ réponse), encodage des JSP fixé dans `web.xml`, sources compilées en UTF-8 (`
 
 ## 7. Difficultés rencontrées et solutions
 
-_Section rédigée par Hamza._
+Cette section présente les cinq difficultés qui nous ont demandé le plus de temps. Chacune a été l'occasion de
+mieux comprendre le fonctionnement d'Hibernate et des servlets au-delà des exemples vus en cours.
+
+### 7.1 Chargement paresseux des associations dans les JSP
+
+**Problème.** La page de détail d'une commande provoquait une erreur au moment d'afficher ses lignes, alors que
+la commande elle-même était correctement chargée par le service.
+
+**Cause.** L'association `Commande.lignes` est chargée à la demande. Or la session Hibernate est fermée à la fin
+de la transaction, dans le service, c'est-à-dire avant que la JSP ne parcoure la collection : Hibernate ne peut
+alors plus aller chercher les lignes en base.
+
+**Solution.** Nous avons choisi de charger explicitement ce dont la vue a besoin, plutôt que de garder la
+session ouverte pendant l'affichage. Le détail d'une commande passe par une requête `join fetch`
+(`CommandeDao.trouverAvecLignes`) qui ramène la commande, ses lignes et leurs produits en une seule requête. Les
+associations `@ManyToOne` (catégorie d'un produit, client d'une commande) restent en chargement immédiat, et
+nous n'accédons jamais aux commandes d'un utilisateur à partir de l'objet conservé en session HTTP.
+
+### 7.2 Cohérence du stock lors de commandes simultanées
+
+**Problème.** En testant deux commandes envoyées au même moment sur le dernier exemplaire d'un produit, les deux
+pouvaient être acceptées : le stock était vérifié par chacune avant que l'autre ne l'ait décrémenté.
+
+**Cause.** Une transaction garantit que la commande est enregistrée entièrement ou pas du tout (RG12), mais elle
+n'empêche pas, à elle seule, deux transactions de lire la même valeur du stock.
+
+**Solution.** Chaque produit du panier est relu avec un verrou en écriture (`ProduitDao.trouverEtVerrouiller`,
+soit `select … for update`) : la seconde commande attend la fin de la première et lit le stock à jour. Une
+première version verrouillait aussi la catégorie du produit, chargée en même temps que lui ; nous l'avons
+remplacée par une requête HQL qui ne porte que sur le produit, et les produits sont verrouillés par identifiant
+croissant pour que deux commandes ne se bloquent pas mutuellement. Pour l'annulation, les quantités sont rendues
+par une requête `update Produit p set p.stock = p.stock + :quantite` calculée par la base, afin de ne pas
+écraser une vente enregistrée entre-temps (RG14).
+
+### 7.3 Recherche du catalogue avec des critères facultatifs
+
+**Problème.** Le catalogue combine deux critères facultatifs, la catégorie (BF06) et le mot-clé (BF07). Notre
+première requête HQL traitait les deux cas dans une seule clause, de la forme
+`:categorieId is null or p.categorie.id = :categorieId`, et ne fonctionnait pas correctement lorsque le critère
+était absent.
+
+**Cause.** Avec Hibernate 6, un paramètre qui vaut `null` n'a pas de type connu, ce qui pose problème dans ce
+genre de comparaison.
+
+**Solution.** La clause `where` est construite selon les critères réellement fournis : la condition sur la
+catégorie ou sur le mot-clé n'est ajoutée que si le critère est présent. Seuls des fragments fixes sont
+concaténés ; les valeurs saisies passent toujours par des paramètres nommés (BNF03). La même méthode sert à la
+liste et au comptage, ce qui garantit que la pagination correspond aux résultats affichés.
+
+### 7.4 Affichage des dates `LocalDateTime` avec la JSTL
+
+**Problème.** Les dates de commande et d'inscription sont des `LocalDateTime` dans les entités, mais la balise
+`fmt:formatDate` de la JSTL ne les accepte pas : elle n'accepte que des objets `java.util.Date`.
+
+**Cause.** La JSTL est antérieure à l'API `java.time` et ne la prend pas en charge.
+
+**Solution.** Plutôt que de revenir à `java.util.Date` ou d'écrire du code Java dans les pages (les scriptlets
+sont exclus, BNF06), le formatage est confié à l'entité : un accesseur `getDateCommandeFormatee()` renvoie la
+date au format `jj/mm/aaaa hh:mm`, et la JSP l'affiche simplement avec `<c:out>`.
+
+### 7.5 Paramètres invalides et erreurs 500
+
+**Problème.** Une adresse modifiée à la main, par exemple `/produit?id=abc` ou un numéro de page négatif,
+provoquait une erreur 500. Certaines saisies passaient aussi les contrôles par erreur : un champ plus long que
+sa colonne produisait une erreur SQL à l'inscription, et un prix de 0,004 était accepté puis arrondi à 0,00, en
+contradiction avec RG05.
+
+**Cause.** Les paramètres étaient convertis directement dans les servlets, et certains contrôles étaient faits
+avant la mise en forme de la valeur.
+
+**Solution.** La classe `Parametres` centralise la lecture des paramètres numériques : une valeur absente ou mal
+formée donne `null` ou une valeur par défaut, jamais une exception, et le service répond alors « Produit
+introuvable. ». Le numéro de page est ramené dans les limites existantes. Les longueurs sont vérifiées dans le
+service avant l'enregistrement, et le prix est arrondi au centime avant le contrôle de RG05. Les erreurs
+restantes sont dirigées vers une page d'erreur commune, sans trace technique.
 
 ---
 
