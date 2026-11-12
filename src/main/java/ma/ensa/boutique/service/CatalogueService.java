@@ -157,10 +157,12 @@ public class CatalogueService {
             throw new RegleMetierException("Un des champs saisis est trop long.");
         }
         // RG05
+        if (produit.getPrix() != null) {
+            produit.setPrix(produit.getPrix().setScale(2, RoundingMode.HALF_UP));
+        }
         if (produit.getPrix() == null || produit.getPrix().signum() <= 0) {
             throw new RegleMetierException("Le prix doit être strictement positif.");
         }
-        produit.setPrix(produit.getPrix().setScale(2, RoundingMode.HALF_UP));
         if (produit.getPrix().compareTo(PRIX_MAX) > 0) {
             throw new RegleMetierException("Le prix est trop élevé.");
         }
