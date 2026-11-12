@@ -11,27 +11,47 @@ import ma.ensa.boutique.model.Panier;
 import ma.ensa.boutique.model.Utilisateur;
 import ma.ensa.boutique.service.CommandeService;
 import ma.ensa.boutique.service.RegleMetierException;
+import ma.ensa.boutique.util.Parametres;
 
 import java.io.IOException;
 import java.util.Locale;
 
-// BF13 : sous /client/*, donc réservé au client authentifié par AuthFilter (RG08)
+// BF13 (passage), BF14 (historique), BF15 (détail) : sous /client/*, donc réservé au client authentifié par AuthFilter (RG08)
 @WebServlet("/client/commandes")
 public class CommandeServlet extends HttpServlet {
 
     private static final String VUE_VALIDATION = "/WEB-INF/views/client/commande-validation.jsp";
     private static final String VUE_LISTE = "/WEB-INF/views/client/commandes.jsp";
+    private static final String VUE_DETAIL = "/WEB-INF/views/client/commande-detail.jsp";
 
     private final CommandeService commandeService = new CommandeService();
 
     @Override
     protected void doGet(HttpServletRequest requete, HttpServletResponse reponse)
             throws ServletException, IOException {
+        Utilisateur utilisateur = (Utilisateur) requete.getSession().getAttribute("utilisateur");
+
         if ("valider".equals(requete.getParameter("action"))) {
             // Adresse proposée par défaut : celle du profil du client
-            Utilisateur utilisateur = (Utilisateur) requete.getSession().getAttribute("utilisateur");
             afficherValidation(requete, reponse, utilisateur.getAdresse());
+        } else if (requete.getParameter("id") != null) {
+            // BF15 : le service vérifie que la commande appartient au client (RG16)
+            try {
+                Long id = Parametres.lireLong(requete.getParameter("id"));
+                requete.setAttribute("commande", commandeService.trouverCommandeClient(id, utilisateur.getId()));
+                requete.getRequestDispatcher(VUE_DETAIL).forward(requete, reponse);
+            } catch (RegleMetierException e) {
+                requete.getSession().setAttribute("flashErreur", e.getMessage());
+                reponse.sendRedirect(requete.getContextPath() + "/client/commandes");
+            }
         } else {
+            // BF14, BNF10 : historique paginé, plus récentes d'abord
+            long total = commandeService.compterCommandesClient(utilisateur.getId());
+            int nbPages = Parametres.nombrePages(total, CommandeService.TAILLE_PAGE);
+            int page = Math.min(Math.max(Parametres.lireEntier(requete.getParameter("page"), 1), 1), nbPages);
+            requete.setAttribute("commandes", commandeService.listerCommandesClient(utilisateur.getId(), page));
+            requete.setAttribute("pageCourante", page);
+            requete.setAttribute("nbPages", nbPages);
             requete.getRequestDispatcher(VUE_LISTE).forward(requete, reponse);
         }
     }

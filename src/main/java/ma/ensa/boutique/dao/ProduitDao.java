@@ -49,6 +49,17 @@ public class ProduitDao extends GenericDao<Produit> {
                 .uniqueResult();
     }
 
+    // Annulation (RG14) : mise à jour faite par la base sur la valeur actuelle du stock.
+    // Les produits sont déjà chargés avec les lignes de la commande : modifier ces objets
+    // écraserait une vente faite entre-temps par une autre transaction.
+    public void reintegrerStock(Long id, int quantite) {
+        session()
+                .createMutationQuery("update Produit p set p.stock = p.stock + :quantite where p.id = :id")
+                .setParameter("quantite", quantite)
+                .setParameter("id", id)
+                .executeUpdate();
+    }
+
     // ---------- Catalogue public : produits actifs uniquement (RG15) ----------
 
     // categorieId et motCle sont facultatifs (null = pas de filtre) ; la recherche ignore la casse

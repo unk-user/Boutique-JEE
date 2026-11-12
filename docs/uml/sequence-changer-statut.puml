@@ -9,10 +9,11 @@ participant AdminFilter
 control AdminCommandeServlet
 participant CommandeService
 participant CommandeDao
+participant ProduitDao
 participant "Session Hibernate" as Session
 
 Admin -> Vue : choisit le nouveau statut
-Vue -> AdminFilter : POST /admin/commandes (commandeId, statut)
+Vue -> AdminFilter : POST /admin/commandes (commandeId, nouveauStatut)
 AdminFilter -> AdminFilter : utilisateur en session avec role ADMIN ?
 alt non autorisé
   AdminFilter --> Admin : redirect /connexion
@@ -20,15 +21,17 @@ else ADMIN
   AdminFilter -> AdminCommandeServlet : doPost(req, rep)
   AdminCommandeServlet -> CommandeService : changerStatut(commandeId, nouveauStatut)
   CommandeService -> Session : beginTransaction()
-  CommandeService -> CommandeDao : trouverAvecLignes(commandeId)
+  CommandeService -> CommandeDao : trouverEtVerrouiller(commandeId)
+  note right : select ... for update :\nune seule annulation à la fois (RG14)
   CommandeDao --> CommandeService : commande
 
-  alt transition interdite (RG13)
+  alt commande introuvable ou transition interdite (RG13)
     CommandeService -> Session : rollback()
-    CommandeService --> AdminCommandeServlet : RegleMetierException("Changement de statut non autorisé.")
+    CommandeService --> AdminCommandeServlet : RegleMetierException (message en français)
   else nouveauStatut = ANNULEE (depuis EN_ATTENTE ou VALIDEE)
-    loop pour chaque LigneCommande
-      CommandeService -> CommandeService : produit.stock += quantite (RG14)
+    loop pour chaque LigneCommande (par id de produit croissant)
+      CommandeService -> ProduitDao : reintegrerStock(produitId, quantite) (RG14)
+      note right : update ... set stock = stock + quantite\n(calcul fait par la base sur le stock actuel)
     end
     CommandeService -> CommandeService : commande.statut = ANNULEE
     CommandeService -> Session : commit()
