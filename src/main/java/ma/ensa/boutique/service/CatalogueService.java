@@ -165,11 +165,13 @@ public class CatalogueService {
                 || longueur(produit.getImageUrl()) > 500) {
             throw new RegleMetierException("Un des champs saisis est trop long.");
         }
-        // RG05 : prix strictement positif, stock >= 0
+        // RG05 : prix strictement positif (après arrondi au centime), stock >= 0
+        if (produit.getPrix() != null) {
+            produit.setPrix(produit.getPrix().setScale(2, RoundingMode.HALF_UP));
+        }
         if (produit.getPrix() == null || produit.getPrix().signum() <= 0) {
             throw new RegleMetierException("Le prix doit être strictement positif.");
         }
-        produit.setPrix(produit.getPrix().setScale(2, RoundingMode.HALF_UP));
         if (produit.getPrix().compareTo(PRIX_MAX) > 0) {
             throw new RegleMetierException("Le prix est trop élevé.");
         }
