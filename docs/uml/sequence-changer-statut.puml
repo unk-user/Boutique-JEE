@@ -15,9 +15,11 @@ participant "Session Hibernate" as Session
 Admin -> Vue : choisit le nouveau statut
 Vue -> AdminFilter : POST /admin/commandes (commandeId, nouveauStatut)
 AdminFilter -> AdminFilter : utilisateur en session avec role ADMIN ?
-alt non autorisé
+alt non connecté
   AdminFilter --> Admin : redirect /connexion
-else ADMIN
+else connecté avec le rôle CLIENT (BNF02)
+  AdminFilter --> Admin : erreur 403 (page erreur.jsp)
+else role = ADMIN
   AdminFilter -> AdminCommandeServlet : doPost(req, rep)
   AdminCommandeServlet -> CommandeService : changerStatut(commandeId, nouveauStatut)
   CommandeService -> Session : beginTransaction()
