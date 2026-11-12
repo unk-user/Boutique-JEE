@@ -9,6 +9,8 @@
     <!-- BNF04 : expiration de la session après 30 minutes d'inactivité -->
     <session-config>
         <session-timeout>30</session-timeout>
+        <!-- Identifiant de session uniquement dans un cookie, jamais dans l'URL -->
+        <tracking-mode>COOKIE</tracking-mode>
     </session-config>
 
     <!-- BNF09 : toutes les JSP en UTF-8 -->
