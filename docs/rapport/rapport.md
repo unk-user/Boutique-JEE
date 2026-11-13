@@ -15,9 +15,10 @@ Binôme : LAHMOUZ Hamza, ELAOUAD Abdelhamid
 4. [Descriptions textuelles des cas d'utilisation](#4-descriptions-textuelles-des-cas-dutilisation)
 5. [Fonctionnalités réalisées](#5-fonctionnalités-réalisées)
 6. [Choix techniques](#6-choix-techniques)
-7. [Difficultés rencontrées et solutions](#7-difficultés-rencontrées-et-solutions)
-8. [Conclusion et perspectives](#8-conclusion-et-perspectives)
-9. [Annexes](#9-annexes)
+7. [Mise en œuvre : extraits de code](#7-mise-en-œuvre--extraits-de-code)
+8. [Difficultés rencontrées et solutions](#8-difficultés-rencontrées-et-solutions)
+9. [Conclusion et perspectives](#9-conclusion-et-perspectives)
+10. [Annexes](#10-annexes)
 
 ---
 
@@ -768,12 +769,362 @@ réponse), encodage des JSP fixé dans `web.xml`, sources compilées en UTF-8 (`
 
 ---
 
-## 7. Difficultés rencontrées et solutions
+## 7. Mise en œuvre : extraits de code
+
+Ce chapitre présente des extraits du code source, choisis pour montrer comment chaque couche de l'architecture est réalisée : entités et relations Hibernate, configuration, accès aux données, service transactionnel, contrôleur, filtre et vue. Les extraits sont repris tels quels du dépôt ; les passages omis sont signalés par un commentaire.
+
+### 7.1 Entités et relations
+
+Les cinq entités portent des annotations JPA, à partir desquelles Hibernate génère les tables. L'entité `Commande` montre les trois types de correspondance utilisés : une énumération enregistrée sous forme de texte, une association `@ManyToOne` vers le client et une association `@OneToMany` vers les lignes. Cette dernière est une composition : avec `cascade = CascadeType.ALL`, enregistrer la commande enregistre aussi ses lignes.
+
+Entité `Commande` : colonnes, énumération et associations :
+
+```java
+@Entity
+@Table(name = "commande")
+public class Commande {
+    // ...
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "date_commande", nullable = false)
+    private LocalDateTime dateCommande = LocalDateTime.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private StatutCommande statut = StatutCommande.EN_ATTENTE;
+
+    @Column(name = "adresse_livraison", nullable = false, length = 255)
+    private String adresseLivraison;
+
+    // RG11 : calculé par le service à partir des lignes
+    @Column(name = "montant_total", nullable = false, precision = 10, scale = 2)
+    private BigDecimal montantTotal = BigDecimal.ZERO;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
+    private Utilisateur utilisateur;
+
+    // Composition : les lignes sont enregistrées et supprimées avec la commande
+    @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<LigneCommande> lignes = new ArrayList<>();
+    // ... constructeurs
+    // Maintient les deux côtés de l'association
+    public void ajouterLigne(LigneCommande ligne) {
+        ligne.setCommande(this);
+        lignes.add(ligne);
+    }
+    // ... accesseurs
+}
+```
+
+Entité `LigneCommande` : classe d'association entre `Commande` et `Produit` :
+
+```java
+@Entity
+@Table(name = "ligne_commande")
+public class LigneCommande {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private int quantite;
+
+    // RG10 : copie du prix du produit au moment de la commande
+    @Column(name = "prix_unitaire", nullable = false, precision = 10, scale = 2)
+    private BigDecimal prixUnitaire;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "commande_id", nullable = false)
+    private Commande commande;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "produit_id", nullable = false)
+    private Produit produit;
+    // ... constructeurs et accesseurs
+}
+```
+
+`LigneCommande` porte la clé étrangère des deux associations (`commande_id`, `produit_id`) : c'est le côté propriétaire, d'où le `mappedBy = "commande"` du côté `Commande`. La méthode `ajouterLigne` met à jour les deux côtés de l'association en mémoire.
+
+### 7.2 Configuration d'Hibernate
+
+Le fichier `hibernate.cfg.xml` décrit la connexion à MySQL, demande la mise à jour du schéma au démarrage (`hbm2ddl.auto = update`) et déclare les classes annotées. La propriété `current_session_context_class = thread` associe une session à chaque requête HTTP : le service et les DAO partagent ainsi la même session et la même transaction.
+
+`hibernate.cfg.xml` :
+
+```xml
+<hibernate-configuration>
+    <session-factory>
+        <!-- Connexion MySQL (identifiants de développement local) -->
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql://127.0.0.1:3307/boutique?characterEncoding=UTF-8</property>
+        <property name="hibernate.connection.username">boutique</property>
+        <property name="hibernate.connection.password">boutique</property>
+        <property name="hibernate.connection.pool_size">10</property>
+
+        <!-- Tables générées à partir des entités -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        <!-- Une session par thread : le service ouvre la transaction, les DAO l'utilisent -->
+        <property name="hibernate.current_session_context_class">thread</property>
+
+        <property name="hibernate.show_sql">true</property>
+
+        <mapping class="ma.ensa.boutique.model.Utilisateur"/>
+        <mapping class="ma.ensa.boutique.model.Categorie"/>
+        <mapping class="ma.ensa.boutique.model.Produit"/>
+        <mapping class="ma.ensa.boutique.model.Commande"/>
+        <mapping class="ma.ensa.boutique.model.LigneCommande"/>
+    </session-factory>
+</hibernate-configuration>
+```
+
+### 7.3 Accès aux données : DAO générique
+
+Les opérations communes à toutes les entités sont écrites une seule fois dans `GenericDao<T>`. Chaque DAO (`ProduitDao`, `CommandeDao`, etc.) en hérite et n'ajoute que ses requêtes HQL. Les DAO n'ouvrent ni ne valident aucune transaction : ils utilisent la session courante.
+
+`GenericDao<T>` : opérations CRUD communes :
+
+```java
+// CRUD commun à toutes les entités ; la transaction est ouverte par le service
+public abstract class GenericDao<T> {
+
+    protected final Class<T> classe;
+
+    protected GenericDao(Class<T> classe) {
+        this.classe = classe;
+    }
+
+    protected Session session() {
+        return HibernateUtil.getSessionFactory().getCurrentSession();
+    }
+
+    public void sauvegarder(T entite) {
+        session().persist(entite);
+    }
+
+    public T modifier(T entite) {
+        return session().merge(entite);
+    }
+
+    public void supprimer(T entite) {
+        session().remove(entite);
+    }
+
+    // Identifiant absent ou mal formé : null, traité comme « introuvable » par le service
+    public T trouverParId(Long id) {
+        return id == null ? null : session().get(classe, id);
+    }
+
+    public List<T> listerTous() {
+        return session().createQuery("from " + classe.getSimpleName(), classe).getResultList();
+    }
+}
+```
+
+### 7.4 Service : passage de commande transactionnel
+
+Le service `CommandeService` applique les règles RG09 à RG12. La méthode `enTransaction` encadre le traitement : validation si tout se passe bien, annulation complète dès qu'une `RegleMetierException` est levée.
+
+`CommandeService.passerCommande` :
+
+```java
+public Commande passerCommande(Long utilisateurId, Panier panier, String adresseLivraison) {
+    // RG09
+    if (panier == null || panier.estVide()) {
+        throw new RegleMetierException("Votre panier est vide.");
+    }
+    // ... contrôle de l'adresse de livraison
+    // Les produits sont verrouillés par id croissant : deux commandes simultanées
+    // prennent les verrous dans le même ordre et ne peuvent pas se bloquer mutuellement
+    List<LignePanier> lignesPanier = new ArrayList<>(panier.getLignes());
+    lignesPanier.sort(Comparator.comparing(ligne -> ligne.getProduit().getId()));
+
+    return enTransaction(() -> {
+        // L'utilisateur en session est détaché : on le recharge
+        Utilisateur utilisateur = utilisateurDao.trouverParId(utilisateurId);
+        if (utilisateur == null) {
+            throw new RegleMetierException("Utilisateur introuvable.");
+        }
+        // Compte désactivé par un administrateur depuis la connexion (BF22)
+        if (!utilisateur.isActif()) {
+            throw new RegleMetierException("Votre compte est désactivé : vous ne pouvez plus commander.");
+        }
+        Commande commande = new Commande(utilisateur, adresse, StatutCommande.EN_ATTENTE);
+
+        for (LignePanier lignePanier : lignesPanier) {
+            // Le produit du panier est une copie qui peut être périmée : on relit prix, stock et état en base
+            Produit produit = produitDao.trouverEtVerrouiller(lignePanier.getProduit().getId());
+            // RG15 : produit supprimé ou désactivé depuis l'ajout au panier
+            if (produit == null || !produit.isActif()) {
+                throw new RegleMetierException("Le produit « " + lignePanier.getProduit().getNom()
+                        + " » n'est plus disponible : retirez-le de votre panier.");
+            }
+            int quantite = lignePanier.getQuantite();
+            // RG12 : une exception ici annule la commande et tous les stocks déjà décrémentés
+            if (produit.getStock() < quantite) {
+                throw new RegleMetierException("Stock insuffisant pour « " + produit.getNom() + " » ("
+                        + produit.getStock() + " en stock, " + quantite + " demandé(s)).");
+            }
+            produit.setStock(produit.getStock() - quantite);
+            // RG10 : prix actuel du produit copié dans la ligne
+            commande.ajouterLigne(new LigneCommande(produit, quantite, produit.getPrix()));
+        }
+
+        // RG11
+        BigDecimal total = BigDecimal.ZERO;
+        for (LigneCommande ligne : commande.getLignes()) {
+            total = total.add(ligne.getPrixUnitaire().multiply(BigDecimal.valueOf(ligne.getQuantite())));
+        }
+        commande.setMontantTotal(total);
+
+        commandeDao.sauvegarder(commande);
+        return commande;
+    });
+}
+```
+
+`CommandeService.enTransaction` : validation ou annulation :
+
+```java
+private <R> R enTransaction(Supplier<R> traitement) {
+    Session session = HibernateUtil.getSessionFactory().getCurrentSession();
+    session.beginTransaction();
+    try {
+        R resultat = traitement.get();
+        session.getTransaction().commit();
+        return resultat;
+    } catch (RuntimeException e) {
+        session.getTransaction().rollback();
+        throw e;
+    }
+}
+```
+
+`ProduitDao.trouverEtVerrouiller` : lecture du produit avec verrou :
+
+```java
+// Passage de commande (RG12) : recharge le produit avec un verrou en écriture (select ... for update).
+// Deux commandes simultanées sur le même produit sont ainsi traitées l'une après l'autre,
+// ce qui empêche de vendre plus que le stock. Le verrou est libéré au commit ou au rollback.
+// Requête HQL plutôt que get() : seule la ligne du produit est verrouillée, pas celle de sa catégorie.
+public Produit trouverEtVerrouiller(Long id) {
+    if (id == null) {
+        return null;
+    }
+    return session()
+            .createQuery("from Produit p where p.id = :id", Produit.class)
+            .setParameter("id", id)
+            .setHibernateLockMode(LockMode.PESSIMISTIC_WRITE)
+            .uniqueResult();
+}
+```
+
+### 7.5 Contrôleur : servlet de commande
+
+La servlet lit les paramètres, appelle le service et choisit la suite : redirection après un succès (le message est déposé en session et affiché une seule fois), ou réaffichage du formulaire avec le message d'erreur. Elle ne contient aucune règle de gestion.
+
+`CommandeServlet.doPost` :
+
+```java
+@Override
+protected void doPost(HttpServletRequest requete, HttpServletResponse reponse)
+        throws ServletException, IOException {
+    HttpSession session = requete.getSession();
+    Utilisateur utilisateur = (Utilisateur) session.getAttribute("utilisateur");
+    if ("annuler".equals(requete.getParameter("action"))) {
+        annuler(requete, reponse, utilisateur);
+        return;
+    }
+    Panier panier = (Panier) session.getAttribute("panier");
+    String adresseLivraison = requete.getParameter("adresseLivraison");
+
+    try {
+        Commande commande = commandeService.passerCommande(utilisateur.getId(), panier, adresseLivraison);
+        panier.vider();
+        session.setAttribute("flashSucces", "Votre commande n° " + commande.getId()
+                + " a bien été enregistrée. Montant total : "
+                + String.format(Locale.FRANCE, "%,.2f", commande.getMontantTotal()) + " DH.");
+        reponse.sendRedirect(requete.getContextPath() + "/client/commandes");
+    } catch (RegleMetierException e) {
+        // Le panier n'est pas modifié : le client corrige et confirme à nouveau
+        requete.setAttribute("erreur", e.getMessage());
+        afficherValidation(requete, reponse, adresseLivraison);
+    }
+}
+```
+
+### 7.6 Filtre de contrôle d'accès
+
+`AuthFilter` s'applique à toutes les adresses `/client/*`. Il laisse passer la requête seulement si la session contient un utilisateur de rôle CLIENT ; sinon il redirige, avant même que la servlet ne soit appelée.
+
+`AuthFilter.doFilter` :
+
+```java
+// BNF02, RG08 : l'espace client est réservé aux utilisateurs connectés avec le rôle CLIENT (déclaré dans web.xml, après EncodingFilter)
+public class AuthFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse rep, FilterChain chaine)
+            throws IOException, ServletException {
+        HttpServletRequest requete = (HttpServletRequest) req;
+        HttpServletResponse reponse = (HttpServletResponse) rep;
+
+        HttpSession session = requete.getSession(false);
+        Utilisateur utilisateur = session == null ? null : (Utilisateur) session.getAttribute("utilisateur");
+
+        if (utilisateur == null) {
+            reponse.sendRedirect(requete.getContextPath() + "/connexion");
+        } else if (utilisateur.getRole() == Role.ADMIN) {
+            reponse.sendRedirect(requete.getContextPath() + "/admin/tableau-de-bord");
+        } else {
+            chaine.doFilter(requete, reponse);
+        }
+    }
+}
+```
+
+### 7.7 Vue : JSP avec JSTL et EL
+
+Les pages n'utilisent que les balises JSTL et le langage d'expression. L'extrait du panier parcourt les lignes avec `c:forEach`, affiche les textes avec `c:out` (qui échappe le HTML) et met en forme les prix avec `fmt:formatNumber`.
+
+`client/panier.jsp` : lignes du panier et total :
+
+```jsp
+    <c:forEach items="${panier.lignes}" var="ligne">
+        <tr>
+            <td>
+                <a href="${ctx}/produit?id=${ligne.produit.id}"><c:out value="${ligne.produit.nom}"/></a>
+            </td>
+            <td class="text-end text-nowrap">
+                <fmt:formatNumber value="${ligne.produit.prix}" minFractionDigits="2" maxFractionDigits="2"/> DH
+            </td>
+    <%-- ... formulaires de modification et de retrait --%>
+    </c:forEach>
+</tbody>
+<tfoot>
+    <tr>
+        <th colspan="3" class="text-end">Total</th>
+        <th class="text-end text-nowrap">
+            <fmt:formatNumber value="${panier.total}" minFractionDigits="2" maxFractionDigits="2"/> DH
+        </th>
+        <th></th>
+    </tr>
+</tfoot>
+```
+
+---
+
+## 8. Difficultés rencontrées et solutions
 
 Cette section présente les cinq difficultés qui nous ont demandé le plus de temps. Chacune a été l'occasion de
 mieux comprendre le fonctionnement d'Hibernate et des servlets au-delà des exemples vus en cours.
 
-### 7.1 Chargement paresseux des associations dans les JSP
+### 8.1 Chargement paresseux des associations dans les JSP
 
 **Problème.** La page de détail d'une commande provoquait une erreur au moment d'afficher ses lignes, alors que
 la commande elle-même était correctement chargée par le service.
@@ -788,7 +1139,7 @@ session ouverte pendant l'affichage. Le détail d'une commande passe par une req
 associations `@ManyToOne` (catégorie d'un produit, client d'une commande) restent en chargement immédiat, et
 nous n'accédons jamais aux commandes d'un utilisateur à partir de l'objet conservé en session HTTP.
 
-### 7.2 Cohérence du stock lors de commandes simultanées
+### 8.2 Cohérence du stock lors de commandes simultanées
 
 **Problème.** En testant deux commandes envoyées au même moment sur le dernier exemplaire d'un produit, les deux
 pouvaient être acceptées : le stock était vérifié par chacune avant que l'autre ne l'ait décrémenté.
@@ -804,7 +1155,7 @@ croissant pour que deux commandes ne se bloquent pas mutuellement. Pour l'annula
 par une requête `update Produit p set p.stock = p.stock + :quantite` calculée par la base, afin de ne pas
 écraser une vente enregistrée entre-temps (RG14).
 
-### 7.3 Recherche du catalogue avec des critères facultatifs
+### 8.3 Recherche du catalogue avec des critères facultatifs
 
 **Problème.** Le catalogue combine deux critères facultatifs, la catégorie (BF06) et le mot-clé (BF07). Notre
 première requête HQL traitait les deux cas dans une seule clause, de la forme
@@ -819,7 +1170,7 @@ catégorie ou sur le mot-clé n'est ajoutée que si le critère est présent. Se
 concaténés ; les valeurs saisies passent toujours par des paramètres nommés (BNF03). La même méthode sert à la
 liste et au comptage, ce qui garantit que la pagination correspond aux résultats affichés.
 
-### 7.4 Affichage des dates `LocalDateTime` avec la JSTL
+### 8.4 Affichage des dates `LocalDateTime` avec la JSTL
 
 **Problème.** Les dates de commande et d'inscription sont des `LocalDateTime` dans les entités, mais la balise
 `fmt:formatDate` de la JSTL ne les accepte pas : elle n'accepte que des objets `java.util.Date`.
@@ -830,7 +1181,7 @@ liste et au comptage, ce qui garantit que la pagination correspond aux résultat
 sont exclus, BNF06), le formatage est confié à l'entité : un accesseur `getDateCommandeFormatee()` renvoie la
 date au format `jj/mm/aaaa hh:mm`, et la JSP l'affiche simplement avec `<c:out>`.
 
-### 7.5 Paramètres invalides et erreurs 500
+### 8.5 Paramètres invalides et erreurs 500
 
 **Problème.** Une adresse modifiée à la main, par exemple `/produit?id=abc` ou un numéro de page négatif,
 provoquait une erreur 500. Certaines saisies passaient aussi les contrôles par erreur : un champ plus long que
@@ -848,9 +1199,9 @@ restantes sont dirigées vers une page d'erreur commune, sans trace technique.
 
 ---
 
-## 8. Conclusion et perspectives
+## 9. Conclusion et perspectives
 
-### 8.1 Bilan
+### 9.1 Bilan
 
 L'application couvre l'ensemble du cahier des charges : les 23 besoins fonctionnels (P1, P2 et P3), les
 16 règles de gestion, contrôlées dans la couche service, et les besoins non fonctionnels de sécurité, de
@@ -859,7 +1210,7 @@ conception avant le code, puis de faire évoluer les diagrammes de conception av
 Le passage de commande, transactionnel et protégé contre les accès concurrents, constitue le cœur
 technique du projet.
 
-### 8.2 Perspectives
+### 9.2 Perspectives
 
 Améliorations possibles, hors du périmètre actuel :
 
@@ -875,9 +1226,9 @@ Améliorations possibles, hors du périmètre actuel :
 
 ---
 
-## 9. Annexes
+## 10. Annexes
 
-### 9.1 Captures d'écran
+### 10.1 Captures d'écran
 
 Les captures figurent dans l'annexe A de la version PDF ; les fichiers PNG sont dans
 `docs/rapport/latex/captures/`. Elles ont été prises sur l'application déployée en local avec un jeu de
@@ -899,7 +1250,7 @@ données de démonstration.
 - [x] Affichage mobile (barre de navigation repliée et dépliée)
 - [x] Tables générées dans MySQL (sortie du client `mysql`)
 
-### 9.2 Références
+### 10.2 Références
 
 - Cahier des charges : `docs/cahier-des-charges.md`
 - Diagrammes UML : `docs/uml/` (sources `.puml`, exports `.svg`)
