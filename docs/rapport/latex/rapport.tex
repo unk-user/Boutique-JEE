@@ -29,6 +29,7 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta}
 \usepackage[most]{tcolorbox}
+\usepackage{listings}
 \usepackage{hyperref}
 
 \graphicspath{{build/figures/}{captures/}{images/}}
@@ -89,6 +90,20 @@
 \renewcommand{\arraystretch}{1.25}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% ---------- Extraits de code ----------
+\renewcommand{\lstlistingname}{Extrait}
+\lstset{
+  basicstyle=\ttfamily\fontsize{8}{9.8}\selectfont,
+  keywordstyle=\bfseries\color{primaire},
+  commentstyle=\itshape\color{black!55},
+  stringstyle=\color{secondaire},
+  breaklines=true, breakatwhitespace=false, breakindent=2em,
+  columns=fullflexible, keepspaces=true, showstringspaces=false, tabsize=4,
+  frame=single, rulecolor=\color{black!25}, backgroundcolor=\color{fondgris},
+  xleftmargin=4pt, xrightmargin=4pt, framesep=4pt, aboveskip=8pt, belowskip=8pt,
+  captionpos=b, extendedchars=true,
+}
 
 % ---------- Commandes du rapport ----------
 % Identifiant de code (classe, méthode, URL, fichier)
@@ -158,8 +173,9 @@
 \input{sections/04-cas-utilisation}
 \input{sections/05-fonctionnalites}
 \input{sections/06-choix-techniques}
-\input{sections/07-difficultes}
-\input{sections/08-conclusion}
-\input{sections/09-annexes}
+\input{sections/07-mise-en-oeuvre}
+\input{sections/08-difficultes}
+\input{sections/09-conclusion}
+\input{sections/10-annexes}
 
 \end{document}
