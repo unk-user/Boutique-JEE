@@ -77,7 +77,7 @@ public class LigneCommande {
 
 \section{Configuration d'Hibernate}
 
-Le fichier \code{hibernate.cfg.xml} décrit la connexion à MySQL, demande la mise à jour du schéma au démarrage (\code{hbm2ddl.auto = update}) et déclare les classes annotées. La propriété \code{current\_session\_context\_class = thread} associe une session à chaque requête HTTP : le service et les DAO partagent ainsi la même session et la même transaction.
+Le fichier \code{hibernate.cfg.xml} décrit la connexion à MySQL, demande la mise à jour du schéma au démarrage (\code{hbm2ddl.auto = update}) et déclare les classes annotées. La propriété \code{current\_session\_context\_class = thread} associe la session au thread courant, le temps d'une transaction : le service et les DAO partagent ainsi la même session et la même transaction.
 
 \begin{lstlisting}[language={},caption={\code{hibernate.cfg.xml}}]
 <hibernate-configuration>

@@ -37,7 +37,7 @@ page avec un message d'erreur et ne modifie aucune donnée.
 \section{S'authentifier et se déconnecter (BF02, BF03)}
 
 \fichecas{Visiteur (connexion) ; Client, Administrateur (déconnexion)}
-  {Un compte existe pour l'e-mail saisi.}
+  {Le visiteur n'est pas connecté.}
   {Une nouvelle session contient l'utilisateur connecté ; à la déconnexion, la session est invalidée.}
   {BNF01, BNF04}
 
@@ -301,7 +301,7 @@ page avec un message d'erreur et ne modifie aucune donnée.
 \fichecas{Administrateur}
   {L'administrateur est connecté.}
   {Le compte est activé ou désactivé.}
-  {RG02}
+  {BNF02 (aucune règle de gestion propre à ce cas)}
 
 \scenario{Scénario nominal}
 \begin{enumerate}

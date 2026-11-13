@@ -17,7 +17,7 @@ Binôme : LAHMOUZ Hamza, ELAOUAD Abdelhamid
 6. [Choix techniques](#6-choix-techniques)
 7. [Mise en œuvre : extraits de code](#7-mise-en-œuvre--extraits-de-code)
 8. [Difficultés rencontrées et solutions](#8-difficultés-rencontrées-et-solutions)
-9. [Conclusion et perspectives](#9-conclusion-et-perspectives)
+9. [Conclusion](#9-conclusion)
 10. [Annexes](#10-annexes)
 
 ---
@@ -139,7 +139,7 @@ Remarques :
 - Les tickets et les pull requests partagent la même numérotation sur GitHub, d'où les numéros non
   consécutifs des PR (#1 à #3, puis #14 à #20, puis #22 et #24).
 - Le texte « Closes #N » en fin de description de PR ferme automatiquement le ticket à la fusion.
-- Les P3 ont été regroupés dans une PR séparée (#19) pour pouvoir être isolés de l'étape 9 si nécessaire.
+- Les P3 ont été regroupés dans une PR séparée (#19) pour pouvoir être isolés des besoins P2 si nécessaire.
 
 ### 2.6 Conventions Git
 
@@ -301,7 +301,7 @@ page avec un message d'erreur et ne modifie aucune donnée.
 | Rubrique | Description |
 |---|---|
 | Acteurs | Visiteur (connexion) ; Client, Administrateur (déconnexion) |
-| Précondition | Un compte existe pour l'e-mail saisi. |
+| Précondition | Le visiteur n'est pas connecté. |
 | Postcondition | Une nouvelle session contient l'utilisateur connecté ; à la déconnexion, la session est invalidée. |
 | Règles | BNF01, BNF04 |
 
@@ -555,7 +555,7 @@ page avec un message d'erreur et ne modifie aucune donnée.
 | Acteur | Administrateur |
 | Précondition | L'administrateur est connecté. |
 | Postcondition | Le compte est activé ou désactivé. |
-| Règles | RG02 |
+| Règles | BNF02 (aucune règle de gestion propre à ce cas) |
 
 **Scénario nominal**
 
@@ -852,7 +852,7 @@ public class LigneCommande {
 
 ### 7.2 Configuration d'Hibernate
 
-Le fichier `hibernate.cfg.xml` décrit la connexion à MySQL, demande la mise à jour du schéma au démarrage (`hbm2ddl.auto = update`) et déclare les classes annotées. La propriété `current_session_context_class = thread` associe une session à chaque requête HTTP : le service et les DAO partagent ainsi la même session et la même transaction.
+Le fichier `hibernate.cfg.xml` décrit la connexion à MySQL, demande la mise à jour du schéma au démarrage (`hbm2ddl.auto = update`) et déclare les classes annotées. La propriété `current_session_context_class = thread` associe la session au thread courant, le temps d'une transaction : le service et les DAO partagent ainsi la même session et la même transaction.
 
 `hibernate.cfg.xml` :
 
@@ -1199,9 +1199,7 @@ restantes sont dirigées vers une page d'erreur commune, sans trace technique.
 
 ---
 
-## 9. Conclusion et perspectives
-
-### 9.1 Bilan
+## 9. Conclusion
 
 L'application couvre l'ensemble du cahier des charges : les 23 besoins fonctionnels (P1, P2 et P3), les
 16 règles de gestion, contrôlées dans la couche service, et les besoins non fonctionnels de sécurité, de
@@ -1209,20 +1207,6 @@ fiabilité et d'ergonomie. La démarche du modèle en Y a permis de fixer les ca
 conception avant le code, puis de faire évoluer les diagrammes de conception avec l'implémentation.
 Le passage de commande, transactionnel et protégé contre les accès concurrents, constitue le cœur
 technique du projet.
-
-### 9.2 Perspectives
-
-Améliorations possibles, hors du périmètre actuel :
-
-- Paiement en ligne réel (le paiement est aujourd'hui simulé, à la livraison).
-- Envoi d'e-mails transactionnels (confirmation de commande, changement de statut).
-- Suivi de livraison avec un transporteur.
-- Panier persistant en base, conservé entre deux connexions.
-- Envoi d'images de produits (aujourd'hui une URL d'image est saisie).
-- Contrôle de l'état du compte à chaque requête, pour déconnecter immédiatement un client désactivé.
-- Signalement dans le panier des produits devenus indisponibles avant la validation.
-- Tests automatisés (tests unitaires des services, tests d'intégration des DAO).
-- Pool de connexions de production (par exemple HikariCP) à la place du pool intégré d'Hibernate.
 
 ---
 
