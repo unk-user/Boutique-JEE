@@ -25,7 +25,6 @@ public class Commande {
     @Column(name = "adresse_livraison", nullable = false, length = 255)
     private String adresseLivraison;
 
-    // RG11 : calculé par le service à partir des lignes
     @Column(name = "montant_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal montantTotal = BigDecimal.ZERO;
 
@@ -33,11 +32,9 @@ public class Commande {
     @JoinColumn(name = "utilisateur_id", nullable = false)
     private Utilisateur utilisateur;
 
-    // Composition : les lignes sont enregistrées et supprimées avec la commande
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LigneCommande> lignes = new ArrayList<>();
     // ... constructeurs
-    // Maintient les deux côtés de l'association
     public void ajouterLigne(LigneCommande ligne) {
         ligne.setCommande(this);
         lignes.add(ligne);
@@ -58,7 +55,6 @@ public class LigneCommande {
     @Column(nullable = false)
     private int quantite;
 
-    // RG10 : copie du prix du produit au moment de la commande
     @Column(name = "prix_unitaire", nullable = false, precision = 10, scale = 2)
     private BigDecimal prixUnitaire;
 
@@ -82,17 +78,14 @@ Le fichier \code{hibernate.cfg.xml} décrit la connexion à MySQL, demande la mi
 \begin{lstlisting}[language={},caption={\code{hibernate.cfg.xml}}]
 <hibernate-configuration>
     <session-factory>
-        <!-- Connexion MySQL (identifiants de développement local) -->
         <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
         <property name="hibernate.connection.url">jdbc:mysql://127.0.0.1:3307/boutique?characterEncoding=UTF-8</property>
         <property name="hibernate.connection.username">boutique</property>
         <property name="hibernate.connection.password">boutique</property>
         <property name="hibernate.connection.pool_size">10</property>
 
-        <!-- Tables générées à partir des entités -->
         <property name="hibernate.hbm2ddl.auto">update</property>
 
-        <!-- Une session par thread : le service ouvre la transaction, les DAO l'utilisent -->
         <property name="hibernate.current_session_context_class">thread</property>
 
         <property name="hibernate.show_sql">true</property>
@@ -111,7 +104,6 @@ Le fichier \code{hibernate.cfg.xml} décrit la connexion à MySQL, demande la mi
 Les opérations communes à toutes les entités sont écrites une seule fois dans \code{GenericDao<T>}. Chaque DAO (\code{ProduitDao}, \code{CommandeDao}, etc.) en hérite et n'ajoute que ses requêtes HQL. Les DAO n'ouvrent ni ne valident aucune transaction : ils utilisent la session courante.
 
 \begin{lstlisting}[language=Java,caption={\code{GenericDao<T>} : opérations CRUD communes}]
-// CRUD commun à toutes les entités ; la transaction est ouverte par le service
 public abstract class GenericDao<T> {
 
     protected final Class<T> classe;
@@ -136,7 +128,6 @@ public abstract class GenericDao<T> {
         session().remove(entite);
     }
 
-    // Identifiant absent ou mal formé : null, traité comme « introuvable » par le service
     public T trouverParId(Long id) {
         return id == null ? null : session().get(classe, id);
     }
@@ -158,39 +149,34 @@ public Commande passerCommande(Long utilisateurId, Panier panier, String adresse
         throw new RegleMetierException("Votre panier est vide.");
     }
     // ... contrôle de l'adresse de livraison
-    // Les produits sont verrouillés par id croissant : deux commandes simultanées
-    // prennent les verrous dans le même ordre et ne peuvent pas se bloquer mutuellement
     List<LignePanier> lignesPanier = new ArrayList<>(panier.getLignes());
     lignesPanier.sort(Comparator.comparing(ligne -> ligne.getProduit().getId()));
 
     return enTransaction(() -> {
-        // L'utilisateur en session est détaché : on le recharge
         Utilisateur utilisateur = utilisateurDao.trouverParId(utilisateurId);
         if (utilisateur == null) {
             throw new RegleMetierException("Utilisateur introuvable.");
         }
-        // Compte désactivé par un administrateur depuis la connexion (BF22)
         if (!utilisateur.isActif()) {
             throw new RegleMetierException("Votre compte est désactivé : vous ne pouvez plus commander.");
         }
         Commande commande = new Commande(utilisateur, adresse, StatutCommande.EN_ATTENTE);
 
         for (LignePanier lignePanier : lignesPanier) {
-            // Le produit du panier est une copie qui peut être périmée : on relit prix, stock et état en base
             Produit produit = produitDao.trouverEtVerrouiller(lignePanier.getProduit().getId());
-            // RG15 : produit supprimé ou désactivé depuis l'ajout au panier
+            // RG15
             if (produit == null || !produit.isActif()) {
                 throw new RegleMetierException("Le produit « " + lignePanier.getProduit().getNom()
                         + " » n'est plus disponible : retirez-le de votre panier.");
             }
             int quantite = lignePanier.getQuantite();
-            // RG12 : une exception ici annule la commande et tous les stocks déjà décrémentés
+            // RG12
             if (produit.getStock() < quantite) {
                 throw new RegleMetierException("Stock insuffisant pour « " + produit.getNom() + " » ("
                         + produit.getStock() + " en stock, " + quantite + " demandé(s)).");
             }
             produit.setStock(produit.getStock() - quantite);
-            // RG10 : prix actuel du produit copié dans la ligne
+            // RG10
             commande.ajouterLigne(new LigneCommande(produit, quantite, produit.getPrix()));
         }
 
@@ -223,10 +209,6 @@ private <R> R enTransaction(Supplier<R> traitement) {
 \end{lstlisting}
 
 \begin{lstlisting}[language=Java,caption={\code{ProduitDao.trouverEtVerrouiller} : lecture du produit avec verrou}]
-// Passage de commande (RG12) : recharge le produit avec un verrou en écriture (select ... for update).
-// Deux commandes simultanées sur le même produit sont ainsi traitées l'une après l'autre,
-// ce qui empêche de vendre plus que le stock. Le verrou est libéré au commit ou au rollback.
-// Requête HQL plutôt que get() : seule la ligne du produit est verrouillée, pas celle de sa catégorie.
 public Produit trouverEtVerrouiller(Long id) {
     if (id == null) {
         return null;
@@ -264,7 +246,6 @@ protected void doPost(HttpServletRequest requete, HttpServletResponse reponse)
                 + String.format(Locale.FRANCE, "%,.2f", commande.getMontantTotal()) + " DH.");
         reponse.sendRedirect(requete.getContextPath() + "/client/commandes");
     } catch (RegleMetierException e) {
-        // Le panier n'est pas modifié : le client corrige et confirme à nouveau
         requete.setAttribute("erreur", e.getMessage());
         afficherValidation(requete, reponse, adresseLivraison);
     }
@@ -276,7 +257,6 @@ protected void doPost(HttpServletRequest requete, HttpServletResponse reponse)
 \code{AuthFilter} s'applique à toutes les adresses \code{/client/*}. Il laisse passer la requête seulement si la session contient un utilisateur de rôle CLIENT ; sinon il redirige, avant même que la servlet ne soit appelée.
 
 \begin{lstlisting}[language=Java,caption={\code{AuthFilter.doFilter}}]
-// BNF02, RG08 : l'espace client est réservé aux utilisateurs connectés avec le rôle CLIENT (déclaré dans web.xml, après EncodingFilter)
 public class AuthFilter implements Filter {
 
     @Override
