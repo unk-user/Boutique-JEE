@@ -1,0 +1,327 @@
+\chapter{Mise en œuvre : extraits de code}\label{chap:code}
+
+Ce chapitre présente des extraits du code source, choisis pour montrer comment chaque couche de l'architecture est réalisée : entités et relations Hibernate, configuration, accès aux données, service transactionnel, contrôleur, filtre et vue. Les extraits sont repris tels quels du dépôt ; les passages omis sont signalés par un commentaire.
+
+\section{Entités et relations}
+
+Les cinq entités portent des annotations JPA, à partir desquelles Hibernate génère les tables. L'entité \code{Commande} montre les trois types de correspondance utilisés : une énumération enregistrée sous forme de texte, une association \code{@ManyToOne} vers le client et une association \code{@OneToMany} vers les lignes. Cette dernière est une composition : avec \code{cascade = CascadeType.ALL}, enregistrer la commande enregistre aussi ses lignes.
+
+\begin{lstlisting}[language=Java,caption={Entité \code{Commande} : colonnes, énumération et associations}]
+@Entity
+@Table(name = "commande")
+public class Commande {
+    // ...
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "date_commande", nullable = false)
+    private LocalDateTime dateCommande = LocalDateTime.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private StatutCommande statut = StatutCommande.EN_ATTENTE;
+
+    @Column(name = "adresse_livraison", nullable = false, length = 255)
+    private String adresseLivraison;
+
+    // RG11 : calculé par le service à partir des lignes
+    @Column(name = "montant_total", nullable = false, precision = 10, scale = 2)
+    private BigDecimal montantTotal = BigDecimal.ZERO;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
+    private Utilisateur utilisateur;
+
+    // Composition : les lignes sont enregistrées et supprimées avec la commande
+    @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<LigneCommande> lignes = new ArrayList<>();
+    // ... constructeurs
+    // Maintient les deux côtés de l'association
+    public void ajouterLigne(LigneCommande ligne) {
+        ligne.setCommande(this);
+        lignes.add(ligne);
+    }
+    // ... accesseurs
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Java,caption={Entité \code{LigneCommande} : classe d'association entre \code{Commande} et \code{Produit}}]
+@Entity
+@Table(name = "ligne_commande")
+public class LigneCommande {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private int quantite;
+
+    // RG10 : copie du prix du produit au moment de la commande
+    @Column(name = "prix_unitaire", nullable = false, precision = 10, scale = 2)
+    private BigDecimal prixUnitaire;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "commande_id", nullable = false)
+    private Commande commande;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "produit_id", nullable = false)
+    private Produit produit;
+    // ... constructeurs et accesseurs
+}
+\end{lstlisting}
+
+\code{LigneCommande} porte la clé étrangère des deux associations (\code{commande\_id}, \code{produit\_id}) : c'est le côté propriétaire, d'où le \code{mappedBy = "commande"} du côté \code{Commande}. La méthode \code{ajouterLigne} met à jour les deux côtés de l'association en mémoire.
+
+\section{Configuration d'Hibernate}
+
+Le fichier \code{hibernate.cfg.xml} décrit la connexion à MySQL, demande la mise à jour du schéma au démarrage (\code{hbm2ddl.auto = update}) et déclare les classes annotées. La propriété \code{current\_session\_context\_class = thread} associe une session à chaque requête HTTP : le service et les DAO partagent ainsi la même session et la même transaction.
+
+\begin{lstlisting}[language={},caption={\code{hibernate.cfg.xml}}]
+<hibernate-configuration>
+    <session-factory>
+        <!-- Connexion MySQL (identifiants de développement local) -->
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql://127.0.0.1:3307/boutique?characterEncoding=UTF-8</property>
+        <property name="hibernate.connection.username">boutique</property>
+        <property name="hibernate.connection.password">boutique</property>
+        <property name="hibernate.connection.pool_size">10</property>
+
+        <!-- Tables générées à partir des entités -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        <!-- Une session par thread : le service ouvre la transaction, les DAO l'utilisent -->
+        <property name="hibernate.current_session_context_class">thread</property>
+
+        <property name="hibernate.show_sql">true</property>
+
+        <mapping class="ma.ensa.boutique.model.Utilisateur"/>
+        <mapping class="ma.ensa.boutique.model.Categorie"/>
+        <mapping class="ma.ensa.boutique.model.Produit"/>
+        <mapping class="ma.ensa.boutique.model.Commande"/>
+        <mapping class="ma.ensa.boutique.model.LigneCommande"/>
+    </session-factory>
+</hibernate-configuration>
+\end{lstlisting}
+
+\section{Accès aux données : DAO générique}
+
+Les opérations communes à toutes les entités sont écrites une seule fois dans \code{GenericDao<T>}. Chaque DAO (\code{ProduitDao}, \code{CommandeDao}, etc.) en hérite et n'ajoute que ses requêtes HQL. Les DAO n'ouvrent ni ne valident aucune transaction : ils utilisent la session courante.
+
+\begin{lstlisting}[language=Java,caption={\code{GenericDao<T>} : opérations CRUD communes}]
+// CRUD commun à toutes les entités ; la transaction est ouverte par le service
+public abstract class GenericDao<T> {
+
+    protected final Class<T> classe;
+
+    protected GenericDao(Class<T> classe) {
+        this.classe = classe;
+    }
+
+    protected Session session() {
+        return HibernateUtil.getSessionFactory().getCurrentSession();
+    }
+
+    public void sauvegarder(T entite) {
+        session().persist(entite);
+    }
+
+    public T modifier(T entite) {
+        return session().merge(entite);
+    }
+
+    public void supprimer(T entite) {
+        session().remove(entite);
+    }
+
+    // Identifiant absent ou mal formé : null, traité comme « introuvable » par le service
+    public T trouverParId(Long id) {
+        return id == null ? null : session().get(classe, id);
+    }
+
+    public List<T> listerTous() {
+        return session().createQuery("from " + classe.getSimpleName(), classe).getResultList();
+    }
+}
+\end{lstlisting}
+
+\section{Service : passage de commande transactionnel}
+
+Le service \code{CommandeService} applique les règles RG09 à RG12. La méthode \code{enTransaction} encadre le traitement : validation si tout se passe bien, annulation complète dès qu'une \code{RegleMetierException} est levée.
+
+\begin{lstlisting}[language=Java,caption={\code{CommandeService.passerCommande}}]
+public Commande passerCommande(Long utilisateurId, Panier panier, String adresseLivraison) {
+    // RG09
+    if (panier == null || panier.estVide()) {
+        throw new RegleMetierException("Votre panier est vide.");
+    }
+    // ... contrôle de l'adresse de livraison
+    // Les produits sont verrouillés par id croissant : deux commandes simultanées
+    // prennent les verrous dans le même ordre et ne peuvent pas se bloquer mutuellement
+    List<LignePanier> lignesPanier = new ArrayList<>(panier.getLignes());
+    lignesPanier.sort(Comparator.comparing(ligne -> ligne.getProduit().getId()));
+
+    return enTransaction(() -> {
+        // L'utilisateur en session est détaché : on le recharge
+        Utilisateur utilisateur = utilisateurDao.trouverParId(utilisateurId);
+        if (utilisateur == null) {
+            throw new RegleMetierException("Utilisateur introuvable.");
+        }
+        // Compte désactivé par un administrateur depuis la connexion (BF22)
+        if (!utilisateur.isActif()) {
+            throw new RegleMetierException("Votre compte est désactivé : vous ne pouvez plus commander.");
+        }
+        Commande commande = new Commande(utilisateur, adresse, StatutCommande.EN_ATTENTE);
+
+        for (LignePanier lignePanier : lignesPanier) {
+            // Le produit du panier est une copie qui peut être périmée : on relit prix, stock et état en base
+            Produit produit = produitDao.trouverEtVerrouiller(lignePanier.getProduit().getId());
+            // RG15 : produit supprimé ou désactivé depuis l'ajout au panier
+            if (produit == null || !produit.isActif()) {
+                throw new RegleMetierException("Le produit « " + lignePanier.getProduit().getNom()
+                        + " » n'est plus disponible : retirez-le de votre panier.");
+            }
+            int quantite = lignePanier.getQuantite();
+            // RG12 : une exception ici annule la commande et tous les stocks déjà décrémentés
+            if (produit.getStock() < quantite) {
+                throw new RegleMetierException("Stock insuffisant pour « " + produit.getNom() + " » ("
+                        + produit.getStock() + " en stock, " + quantite + " demandé(s)).");
+            }
+            produit.setStock(produit.getStock() - quantite);
+            // RG10 : prix actuel du produit copié dans la ligne
+            commande.ajouterLigne(new LigneCommande(produit, quantite, produit.getPrix()));
+        }
+
+        // RG11
+        BigDecimal total = BigDecimal.ZERO;
+        for (LigneCommande ligne : commande.getLignes()) {
+            total = total.add(ligne.getPrixUnitaire().multiply(BigDecimal.valueOf(ligne.getQuantite())));
+        }
+        commande.setMontantTotal(total);
+
+        commandeDao.sauvegarder(commande);
+        return commande;
+    });
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Java,caption={\code{CommandeService.enTransaction} : validation ou annulation}]
+private <R> R enTransaction(Supplier<R> traitement) {
+    Session session = HibernateUtil.getSessionFactory().getCurrentSession();
+    session.beginTransaction();
+    try {
+        R resultat = traitement.get();
+        session.getTransaction().commit();
+        return resultat;
+    } catch (RuntimeException e) {
+        session.getTransaction().rollback();
+        throw e;
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Java,caption={\code{ProduitDao.trouverEtVerrouiller} : lecture du produit avec verrou}]
+// Passage de commande (RG12) : recharge le produit avec un verrou en écriture (select ... for update).
+// Deux commandes simultanées sur le même produit sont ainsi traitées l'une après l'autre,
+// ce qui empêche de vendre plus que le stock. Le verrou est libéré au commit ou au rollback.
+// Requête HQL plutôt que get() : seule la ligne du produit est verrouillée, pas celle de sa catégorie.
+public Produit trouverEtVerrouiller(Long id) {
+    if (id == null) {
+        return null;
+    }
+    return session()
+            .createQuery("from Produit p where p.id = :id", Produit.class)
+            .setParameter("id", id)
+            .setHibernateLockMode(LockMode.PESSIMISTIC_WRITE)
+            .uniqueResult();
+}
+\end{lstlisting}
+
+\section{Contrôleur : servlet de commande}
+
+La servlet lit les paramètres, appelle le service et choisit la suite : redirection après un succès (le message est déposé en session et affiché une seule fois), ou réaffichage du formulaire avec le message d'erreur. Elle ne contient aucune règle de gestion.
+
+\begin{lstlisting}[language=Java,caption={\code{CommandeServlet.doPost}}]
+@Override
+protected void doPost(HttpServletRequest requete, HttpServletResponse reponse)
+        throws ServletException, IOException {
+    HttpSession session = requete.getSession();
+    Utilisateur utilisateur = (Utilisateur) session.getAttribute("utilisateur");
+    if ("annuler".equals(requete.getParameter("action"))) {
+        annuler(requete, reponse, utilisateur);
+        return;
+    }
+    Panier panier = (Panier) session.getAttribute("panier");
+    String adresseLivraison = requete.getParameter("adresseLivraison");
+
+    try {
+        Commande commande = commandeService.passerCommande(utilisateur.getId(), panier, adresseLivraison);
+        panier.vider();
+        session.setAttribute("flashSucces", "Votre commande n° " + commande.getId()
+                + " a bien été enregistrée. Montant total : "
+                + String.format(Locale.FRANCE, "%,.2f", commande.getMontantTotal()) + " DH.");
+        reponse.sendRedirect(requete.getContextPath() + "/client/commandes");
+    } catch (RegleMetierException e) {
+        // Le panier n'est pas modifié : le client corrige et confirme à nouveau
+        requete.setAttribute("erreur", e.getMessage());
+        afficherValidation(requete, reponse, adresseLivraison);
+    }
+}
+\end{lstlisting}
+
+\section{Filtre de contrôle d'accès}
+
+\code{AuthFilter} s'applique à toutes les adresses \code{/client/*}. Il laisse passer la requête seulement si la session contient un utilisateur de rôle CLIENT ; sinon il redirige, avant même que la servlet ne soit appelée.
+
+\begin{lstlisting}[language=Java,caption={\code{AuthFilter.doFilter}}]
+// BNF02, RG08 : l'espace client est réservé aux utilisateurs connectés avec le rôle CLIENT (déclaré dans web.xml, après EncodingFilter)
+public class AuthFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse rep, FilterChain chaine)
+            throws IOException, ServletException {
+        HttpServletRequest requete = (HttpServletRequest) req;
+        HttpServletResponse reponse = (HttpServletResponse) rep;
+
+        HttpSession session = requete.getSession(false);
+        Utilisateur utilisateur = session == null ? null : (Utilisateur) session.getAttribute("utilisateur");
+
+        if (utilisateur == null) {
+            reponse.sendRedirect(requete.getContextPath() + "/connexion");
+        } else if (utilisateur.getRole() == Role.ADMIN) {
+            reponse.sendRedirect(requete.getContextPath() + "/admin/tableau-de-bord");
+        } else {
+            chaine.doFilter(requete, reponse);
+        }
+    }
+}
+\end{lstlisting}
+
+\section{Vue : JSP avec JSTL et EL}
+
+Les pages n'utilisent que les balises JSTL et le langage d'expression. L'extrait du panier parcourt les lignes avec \code{c:forEach}, affiche les textes avec \code{c:out} (qui échappe le HTML) et met en forme les prix avec \code{fmt:formatNumber}.
+
+\begin{lstlisting}[language={},caption={\code{client/panier.jsp} : lignes du panier et total}]
+    <c:forEach items="${panier.lignes}" var="ligne">
+        <tr>
+            <td>
+                <a href="${ctx}/produit?id=${ligne.produit.id}"><c:out value="${ligne.produit.nom}"/></a>
+            </td>
+            <td class="text-end text-nowrap">
+                <fmt:formatNumber value="${ligne.produit.prix}" minFractionDigits="2" maxFractionDigits="2"/> DH
+            </td>
+    <%-- ... formulaires de modification et de retrait --%>
+    </c:forEach>
+</tbody>
+<tfoot>
+    <tr>
+        <th colspan="3" class="text-end">Total</th>
+        <th class="text-end text-nowrap">
+            <fmt:formatNumber value="${panier.total}" minFractionDigits="2" maxFractionDigits="2"/> DH
+        </th>
+        <th></th>
+    </tr>
+</tfoot>
+\end{lstlisting}
