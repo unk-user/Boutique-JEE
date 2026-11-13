@@ -17,7 +17,7 @@ Binôme : LAHMOUZ Hamza, ELAOUAD Abdelhamid
 6. [Choix techniques](#6-choix-techniques)
 7. [Mise en œuvre : extraits de code](#7-mise-en-œuvre--extraits-de-code)
 8. [Difficultés rencontrées et solutions](#8-difficultés-rencontrées-et-solutions)
-9. [Conclusion et perspectives](#9-conclusion-et-perspectives)
+9. [Conclusion](#9-conclusion)
 10. [Annexes](#10-annexes)
 
 ---
@@ -139,7 +139,7 @@ Remarques :
 - Les tickets et les pull requests partagent la même numérotation sur GitHub, d'où les numéros non
   consécutifs des PR (#1 à #3, puis #14 à #20, puis #22 et #24).
 - Le texte « Closes #N » en fin de description de PR ferme automatiquement le ticket à la fusion.
-- Les P3 ont été regroupés dans une PR séparée (#19) pour pouvoir être isolés de l'étape 9 si nécessaire.
+- Les P3 ont été regroupés dans une PR séparée (#19) pour pouvoir être isolés des besoins P2 si nécessaire.
 
 ### 2.6 Conventions Git
 
@@ -301,7 +301,7 @@ page avec un message d'erreur et ne modifie aucune donnée.
 | Rubrique | Description |
 |---|---|
 | Acteurs | Visiteur (connexion) ; Client, Administrateur (déconnexion) |
-| Précondition | Un compte existe pour l'e-mail saisi. |
+| Précondition | Le visiteur n'est pas connecté. |
 | Postcondition | Une nouvelle session contient l'utilisateur connecté ; à la déconnexion, la session est invalidée. |
 | Règles | BNF01, BNF04 |
 
@@ -555,7 +555,7 @@ page avec un message d'erreur et ne modifie aucune donnée.
 | Acteur | Administrateur |
 | Précondition | L'administrateur est connecté. |
 | Postcondition | Le compte est activé ou désactivé. |
-| Règles | RG02 |
+| Règles | BNF02 (aucune règle de gestion propre à ce cas) |
 
 **Scénario nominal**
 
@@ -798,7 +798,6 @@ public class Commande {
     @Column(name = "adresse_livraison", nullable = false, length = 255)
     private String adresseLivraison;
 
-    // RG11 : calculé par le service à partir des lignes
     @Column(name = "montant_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal montantTotal = BigDecimal.ZERO;
 
@@ -806,11 +805,9 @@ public class Commande {
     @JoinColumn(name = "utilisateur_id", nullable = false)
     private Utilisateur utilisateur;
 
-    // Composition : les lignes sont enregistrées et supprimées avec la commande
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LigneCommande> lignes = new ArrayList<>();
     // ... constructeurs
-    // Maintient les deux côtés de l'association
     public void ajouterLigne(LigneCommande ligne) {
         ligne.setCommande(this);
         lignes.add(ligne);
@@ -833,7 +830,6 @@ public class LigneCommande {
     @Column(nullable = false)
     private int quantite;
 
-    // RG10 : copie du prix du produit au moment de la commande
     @Column(name = "prix_unitaire", nullable = false, precision = 10, scale = 2)
     private BigDecimal prixUnitaire;
 
@@ -852,24 +848,21 @@ public class LigneCommande {
 
 ### 7.2 Configuration d'Hibernate
 
-Le fichier `hibernate.cfg.xml` décrit la connexion à MySQL, demande la mise à jour du schéma au démarrage (`hbm2ddl.auto = update`) et déclare les classes annotées. La propriété `current_session_context_class = thread` associe une session à chaque requête HTTP : le service et les DAO partagent ainsi la même session et la même transaction.
+Le fichier `hibernate.cfg.xml` décrit la connexion à MySQL, demande la mise à jour du schéma au démarrage (`hbm2ddl.auto = update`) et déclare les classes annotées. La propriété `current_session_context_class = thread` associe la session au thread courant, le temps d'une transaction : le service et les DAO partagent ainsi la même session et la même transaction.
 
 `hibernate.cfg.xml` :
 
 ```xml
 <hibernate-configuration>
     <session-factory>
-        <!-- Connexion MySQL (identifiants de développement local) -->
         <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
         <property name="hibernate.connection.url">jdbc:mysql://127.0.0.1:3307/boutique?characterEncoding=UTF-8</property>
         <property name="hibernate.connection.username">boutique</property>
         <property name="hibernate.connection.password">boutique</property>
         <property name="hibernate.connection.pool_size">10</property>
 
-        <!-- Tables générées à partir des entités -->
         <property name="hibernate.hbm2ddl.auto">update</property>
 
-        <!-- Une session par thread : le service ouvre la transaction, les DAO l'utilisent -->
         <property name="hibernate.current_session_context_class">thread</property>
 
         <property name="hibernate.show_sql">true</property>
@@ -890,7 +883,6 @@ Les opérations communes à toutes les entités sont écrites une seule fois dan
 `GenericDao<T>` : opérations CRUD communes :
 
 ```java
-// CRUD commun à toutes les entités ; la transaction est ouverte par le service
 public abstract class GenericDao<T> {
 
     protected final Class<T> classe;
@@ -915,7 +907,6 @@ public abstract class GenericDao<T> {
         session().remove(entite);
     }
 
-    // Identifiant absent ou mal formé : null, traité comme « introuvable » par le service
     public T trouverParId(Long id) {
         return id == null ? null : session().get(classe, id);
     }
@@ -939,39 +930,34 @@ public Commande passerCommande(Long utilisateurId, Panier panier, String adresse
         throw new RegleMetierException("Votre panier est vide.");
     }
     // ... contrôle de l'adresse de livraison
-    // Les produits sont verrouillés par id croissant : deux commandes simultanées
-    // prennent les verrous dans le même ordre et ne peuvent pas se bloquer mutuellement
     List<LignePanier> lignesPanier = new ArrayList<>(panier.getLignes());
     lignesPanier.sort(Comparator.comparing(ligne -> ligne.getProduit().getId()));
 
     return enTransaction(() -> {
-        // L'utilisateur en session est détaché : on le recharge
         Utilisateur utilisateur = utilisateurDao.trouverParId(utilisateurId);
         if (utilisateur == null) {
             throw new RegleMetierException("Utilisateur introuvable.");
         }
-        // Compte désactivé par un administrateur depuis la connexion (BF22)
         if (!utilisateur.isActif()) {
             throw new RegleMetierException("Votre compte est désactivé : vous ne pouvez plus commander.");
         }
         Commande commande = new Commande(utilisateur, adresse, StatutCommande.EN_ATTENTE);
 
         for (LignePanier lignePanier : lignesPanier) {
-            // Le produit du panier est une copie qui peut être périmée : on relit prix, stock et état en base
             Produit produit = produitDao.trouverEtVerrouiller(lignePanier.getProduit().getId());
-            // RG15 : produit supprimé ou désactivé depuis l'ajout au panier
+            // RG15
             if (produit == null || !produit.isActif()) {
                 throw new RegleMetierException("Le produit « " + lignePanier.getProduit().getNom()
                         + " » n'est plus disponible : retirez-le de votre panier.");
             }
             int quantite = lignePanier.getQuantite();
-            // RG12 : une exception ici annule la commande et tous les stocks déjà décrémentés
+            // RG12
             if (produit.getStock() < quantite) {
                 throw new RegleMetierException("Stock insuffisant pour « " + produit.getNom() + " » ("
                         + produit.getStock() + " en stock, " + quantite + " demandé(s)).");
             }
             produit.setStock(produit.getStock() - quantite);
-            // RG10 : prix actuel du produit copié dans la ligne
+            // RG10
             commande.ajouterLigne(new LigneCommande(produit, quantite, produit.getPrix()));
         }
 
@@ -1008,10 +994,6 @@ private <R> R enTransaction(Supplier<R> traitement) {
 `ProduitDao.trouverEtVerrouiller` : lecture du produit avec verrou :
 
 ```java
-// Passage de commande (RG12) : recharge le produit avec un verrou en écriture (select ... for update).
-// Deux commandes simultanées sur le même produit sont ainsi traitées l'une après l'autre,
-// ce qui empêche de vendre plus que le stock. Le verrou est libéré au commit ou au rollback.
-// Requête HQL plutôt que get() : seule la ligne du produit est verrouillée, pas celle de sa catégorie.
 public Produit trouverEtVerrouiller(Long id) {
     if (id == null) {
         return null;
@@ -1051,7 +1033,6 @@ protected void doPost(HttpServletRequest requete, HttpServletResponse reponse)
                 + String.format(Locale.FRANCE, "%,.2f", commande.getMontantTotal()) + " DH.");
         reponse.sendRedirect(requete.getContextPath() + "/client/commandes");
     } catch (RegleMetierException e) {
-        // Le panier n'est pas modifié : le client corrige et confirme à nouveau
         requete.setAttribute("erreur", e.getMessage());
         afficherValidation(requete, reponse, adresseLivraison);
     }
@@ -1065,7 +1046,6 @@ protected void doPost(HttpServletRequest requete, HttpServletResponse reponse)
 `AuthFilter.doFilter` :
 
 ```java
-// BNF02, RG08 : l'espace client est réservé aux utilisateurs connectés avec le rôle CLIENT (déclaré dans web.xml, après EncodingFilter)
 public class AuthFilter implements Filter {
 
     @Override
@@ -1199,9 +1179,7 @@ restantes sont dirigées vers une page d'erreur commune, sans trace technique.
 
 ---
 
-## 9. Conclusion et perspectives
-
-### 9.1 Bilan
+## 9. Conclusion
 
 L'application couvre l'ensemble du cahier des charges : les 23 besoins fonctionnels (P1, P2 et P3), les
 16 règles de gestion, contrôlées dans la couche service, et les besoins non fonctionnels de sécurité, de
@@ -1209,20 +1187,6 @@ fiabilité et d'ergonomie. La démarche du modèle en Y a permis de fixer les ca
 conception avant le code, puis de faire évoluer les diagrammes de conception avec l'implémentation.
 Le passage de commande, transactionnel et protégé contre les accès concurrents, constitue le cœur
 technique du projet.
-
-### 9.2 Perspectives
-
-Améliorations possibles, hors du périmètre actuel :
-
-- Paiement en ligne réel (le paiement est aujourd'hui simulé, à la livraison).
-- Envoi d'e-mails transactionnels (confirmation de commande, changement de statut).
-- Suivi de livraison avec un transporteur.
-- Panier persistant en base, conservé entre deux connexions.
-- Envoi d'images de produits (aujourd'hui une URL d'image est saisie).
-- Contrôle de l'état du compte à chaque requête, pour déconnecter immédiatement un client désactivé.
-- Signalement dans le panier des produits devenus indisponibles avant la validation.
-- Tests automatisés (tests unitaires des services, tests d'intégration des DAO).
-- Pool de connexions de production (par exemple HikariCP) à la place du pool intégré d'Hibernate.
 
 ---
 

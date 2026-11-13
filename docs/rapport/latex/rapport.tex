@@ -1,8 +1,5 @@
-% Rapport de projet : Gestion d'une boutique en ligne
-% Compilation : ./compiler.sh (LuaLaTeX via latexmk, diagrammes convertis depuis docs/uml/*.svg)
 \documentclass[11pt,a4paper,openany]{report}
 
-% ---------- Polices et langue ----------
 \usepackage{fontspec}
 \usepackage[french]{babel}
 \usepackage{newunicodechar}
@@ -12,7 +9,6 @@
 \usepackage{csquotes}
 \usepackage{microtype}
 
-% ---------- Mise en page ----------
 \usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm,headheight=14pt]{geometry}
 \usepackage[table]{xcolor}
 \usepackage{graphicx}
@@ -34,7 +30,6 @@
 
 \graphicspath{{build/figures/}{captures/}{images/}}
 
-% ---------- Couleurs ----------
 \definecolor{primaire}{HTML}{1F3A5F}
 \definecolor{secondaire}{HTML}{3C6E9F}
 \definecolor{fondgris}{HTML}{F2F4F7}
@@ -49,7 +44,6 @@
   pdfsubject={Module Architecture JEE, ENSA Agadir},
 }
 
-% ---------- Titres ----------
 \titleformat{\chapter}[display]
   {\normalfont\color{primaire}}
   {\large\mdseries\scshape \chaptertitlename\ \thechapter}
@@ -63,7 +57,6 @@
 \setcounter{secnumdepth}{2}
 \setcounter{tocdepth}{1}
 
-% ---------- En-têtes et pieds de page ----------
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\chaptermark}[1]{\markboth{#1}{}}
@@ -80,8 +73,6 @@
   \renewcommand{\headrulewidth}{0pt}
 }
 
-% ---------- Listes, tableaux, légendes ----------
-% Les identifiants en police à chasse fixe ne se coupent pas : on laisse plus de souplesse aux lignes
 \setlength{\emergencystretch}{3em}
 \setlist{itemsep=2pt,topsep=4pt}
 \setlist[itemize]{label=\textbullet}
@@ -91,7 +82,6 @@
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 
-% ---------- Extraits de code ----------
 \renewcommand{\lstlistingname}{Extrait}
 \lstset{
   basicstyle=\ttfamily\fontsize{8}{9.8}\selectfont,
@@ -105,22 +95,16 @@
   captionpos=b, extendedchars=true,
 }
 
-% ---------- Commandes du rapport ----------
-% Identifiant de code (classe, méthode, URL, fichier)
 \newcommand{\code}[1]{\texttt{\NoAutoSpacing #1}}
-% En-tête de colonne
 \newcommand{\entete}[1]{\textbf{\color{white}#1}}
 \newcommand{\ligneentete}{\rowcolor{primaire}}
 
-% Diagramme UML : fichier (sans extension), légende, étiquette
 \newcommand{\diagramme}[3]{%
   \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{#1}
     \caption{#2}\label{#3}
   \end{figure}}
-% Diagramme placé sous le texte d'une section en paysage (environnement landscape ouvert par l'appelant).
-% Argument optionnel : hauteur maximale, réduite pour les diagrammes les plus hauts.
 \newcommand{\diagrammesuite}[4][0.74]{%
   \begin{figure}[H]
     \centering
@@ -128,7 +112,6 @@
     \caption{#3}\label{#4}
   \end{figure}}
 
-% Fiche d'un cas d'utilisation : acteur(s), précondition, postcondition, règles
 \newcommand{\fichecas}[4]{%
   \par\noindent
   \begin{tabularx}{\linewidth}{>{\columncolor{fondgris}\bfseries}P{3.2cm}L}
@@ -141,10 +124,8 @@
   \end{tabularx}\par\smallskip}
 \newcommand{\scenario}[1]{\par\medskip\noindent{\bfseries\color{secondaire}#1}\par\nopagebreak}
 
-% Élément restant à compléter : visible dans le PDF tant qu'il n'est pas traité
 \newtcolorbox{afaire}{colback=alerte!6,colframe=alerte,fonttitle=\bfseries,title=À compléter}
 
-% Capture d'écran : fichier PNG dans captures/, légende
 \newcommand{\capture}[2]{%
   \IfFileExists{captures/#1.png}{%
     \begin{figure}[H]

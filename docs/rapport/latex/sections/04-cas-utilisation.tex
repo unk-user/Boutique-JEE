@@ -3,7 +3,6 @@
 Les messages cités sont ceux affichés par l'application. Sauf mention contraire, chaque refus réaffiche la
 page avec un message d'erreur et ne modifie aucune donnée.
 
-% ------------------------------------------------------------------
 \section{S'inscrire (BF01)}
 
 \fichecas{Visiteur}
@@ -33,11 +32,10 @@ page avec un message d'erreur et ne modifie aucune donnée.
   \item Dans tous ces cas, le formulaire est réaffiché avec les valeurs saisies (sauf le mot de passe).
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{S'authentifier et se déconnecter (BF02, BF03)}
 
 \fichecas{Visiteur (connexion) ; Client, Administrateur (déconnexion)}
-  {Un compte existe pour l'e-mail saisi.}
+  {Le visiteur n'est pas connecté.}
   {Une nouvelle session contient l'utilisateur connecté ; à la déconnexion, la session est invalidée.}
   {BNF01, BNF04}
 
@@ -67,7 +65,6 @@ page avec un message d'erreur et ne modifie aucune donnée.
   \item Session inactive pendant 30 minutes : elle expire et l'utilisateur doit se reconnecter (BNF04).
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Consulter et rechercher le catalogue (BF05 à BF08)}
 
 \fichecas{Visiteur (et donc Client)}
@@ -96,7 +93,6 @@ page avec un message d'erreur et ne modifie aucune donnée.
         « Ajouter au panier » si le produit n'est pas en rupture.
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Gérer le panier (BF09 à BF12)}
 
 \fichecas{Client}
@@ -129,7 +125,6 @@ page avec un message d'erreur et ne modifie aucune donnée.
   \item Après un refus à l'ajout, le client revient sur la fiche du produit avec le message.
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Passer une commande (BF13)}
 
 \fichecas{Client}
@@ -166,7 +161,6 @@ page avec un message d'erreur et ne modifie aucune donnée.
         modifié. La page de validation est réaffichée avec le message et l'adresse saisie ; le panier est conservé.
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Consulter ses commandes et annuler une commande (BF14, BF15, BF16)}
 
 \fichecas{Client}
@@ -197,7 +191,6 @@ page avec un message d'erreur et ne modifie aucune donnée.
         refusée et le stock n'est réintégré qu'une fois.
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Consulter et modifier son profil (BF04)}
 
 \fichecas{Client}
@@ -224,7 +217,6 @@ page avec un message d'erreur et ne modifie aucune donnée.
   \item 4b. Confirmation différente ou nouveau mot de passe de moins de 6 caractères : message d'erreur.
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Gérer les catégories, les produits et le stock (BF17, BF18, BF19)}
 
 \fichecas{Administrateur}
@@ -263,7 +255,6 @@ page avec un message d'erreur et ne modifie aucune donnée.
   \item Identifiant inconnu ou invalide : « Produit introuvable. » / « Catégorie introuvable. »
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Gérer les commandes et changer leur statut (BF20, BF21)}
 
 \fichecas{Administrateur}
@@ -295,13 +286,12 @@ page avec un message d'erreur et ne modifie aucune donnée.
         connexion.
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Gérer les utilisateurs (BF22)}
 
 \fichecas{Administrateur}
   {L'administrateur est connecté.}
   {Le compte est activé ou désactivé.}
-  {RG02}
+  {BNF02 (aucune règle de gestion propre à ce cas)}
 
 \scenario{Scénario nominal}
 \begin{enumerate}
@@ -320,7 +310,6 @@ page avec un message d'erreur et ne modifie aucune donnée.
         expiration, mais ne peut plus commander.
 \end{itemize}
 
-% ------------------------------------------------------------------
 \section{Consulter le tableau de bord (BF23)}
 
 \fichecas{Administrateur}
